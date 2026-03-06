@@ -37,7 +37,25 @@ export class DoctorService {
 
   public async checkQdrant(): Promise<DiagnosticResult> {
     const url = process.env.QDRANT_URL || "http://localhost:6333";
+    const apiKey = process.env.QDRANT_API_KEY;
+    
     try {
+      // 1. Ham Fetch Denemesi (Ağ hatasını net görmek için)
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(`${url}/healthz`, { 
+          signal: controller.signal,
+          headers: apiKey ? { "api-key": apiKey } : {}
+        });
+        clearTimeout(timeoutId);
+        logger.info({ status: response.status }, "Qdrant health check response");
+      } catch (fetchErr: any) {
+        logger.error({ error: fetchErr.message, stack: fetchErr.stack }, "Raw fetch failed");
+        throw new Error(`Raw Fetch Failed: ${fetchErr.message}`);
+      }
+
+      // 2. Client ile deneme
       await this.qdrantClient.getCollections();
       return {
         service: "Qdrant",
@@ -47,19 +65,18 @@ export class DoctorService {
     } catch (error: any) {
       let remedy = "QDRANT_URL ve QDRANT_API_KEY değişkenlerini kontrol edin.";
       const errorMsg = error.message || "Bilinmeyen hata";
+      const stack = error.stack || "";
 
-      if (errorMsg.includes("fetch failed")) {
-        remedy =
-          "Ağ Bağlantı Hatası! Domain yerine IP (http://5.182.33.26:6333) veya Coolify servis adını (http://qdrant:6333) deneyin.";
-      } else if (errorMsg.includes("cert") || errorMsg.includes("SSL")) {
-        remedy =
-          "SSL/Sertifika Hatası! NODE_TLS_REJECT_UNAUTHORIZED=0 olduğundan emin olun veya HTTP üzerinden bağlanmayı deneyin.";
+      if (errorMsg.includes("fetch failed") || errorMsg.includes("aborted")) {
+        remedy = "Ağ Zaman Aşımı! Coolify'da servis adını (qdrant-xxx) veya Internal Network ayarlarını kontrol edin.";
+      } else if (errorMsg.includes("refused") || errorMsg.includes("EHOSTUNREACH")) {
+        remedy = "Bağlantı Reddedildi! Portun açık olduğundan ve servisin IP'yi dinlediğinden emin olun.";
       }
 
       return {
         service: "Qdrant",
         status: "ERROR",
-        message: `Hata: ${errorMsg} (URL: ${url})`,
+        message: `Hata: ${errorMsg}\n🔍 Detay: ${stack.split('\n')[0]} (URL: ${url})`,
         remedy,
       };
     }
