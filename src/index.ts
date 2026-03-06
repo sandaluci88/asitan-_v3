@@ -94,11 +94,11 @@ bot.command("doctor", async (ctx) => {
   if ((ctx as any).role !== "boss") {
     return ctx.reply("❌ Bu komut sadece Barış Bey (SuperAdmin) için yetkilendirilmiştir.");
   }
-  const statusMsg = await ctx.reply("🩺 *Sistem damarları kontrol ediliyor...* Lütfen bekleyin.", { parse_mode: "Markdown" });
+  const statusMsg = await ctx.reply("🩺 <b>Sistem damarları kontrol ediliyor...</b> Lütfen bekleyin.", { parse_mode: "HTML" });
   try {
     const results = await doctorService.runFullDiagnostics();
     const report = doctorService.formatReport(results);
-    await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, report, { parse_mode: "Markdown" });
+    await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, report, { parse_mode: "HTML" });
   } catch (error: any) {
     logger.error({ error }, "Doctor command error");
     await ctx.api.editMessageText(ctx.chat.id, statusMsg.message_id, `❌ Kritik hata: ${error.message}`);
