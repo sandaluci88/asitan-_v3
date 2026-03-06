@@ -10,15 +10,17 @@ export class QdrantService {
   private collectionName: string;
 
   constructor() {
-    // SSL sorunlarını aşmak için global ayar
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    const rawUrl =
+      process.env.QDRANT_URL ||
+      "https://f504c5e3-9607-4b22-86d7-cb77e1b922e6.eu-central-1-0.aws.cloud.qdrant.io:6333";
+    const url = rawUrl.trim().replace(/\/$/, "");
 
     this.client = new QdrantClient({
-      url:
-        process.env.QDRANT_URL?.replace(/\/$/, "") || "http://localhost:6333",
+      url: url,
       apiKey: process.env.QDRANT_API_KEY,
       checkCompatibility: false,
     });
+
     this.collectionName = process.env.QDRANT_COLLECTION || "sandaluci_memory";
   }
 

@@ -27,7 +27,8 @@ export class DoctorService {
 
     this.qdrantClient = new QdrantClient({
       url:
-        process.env.QDRANT_URL?.replace(/\/$/, "") || "http://localhost:6333",
+        process.env.QDRANT_URL?.replace(/\/$/, "") ||
+        "https://f504c5e3-9607-4b22-86d7-cb77e1b922e6.eu-central-1-0.aws.cloud.qdrant.io:6333",
       apiKey: process.env.QDRANT_API_KEY,
       checkCompatibility: false,
     });
@@ -40,33 +41,37 @@ export class DoctorService {
   }
 
   public async checkQdrant(): Promise<DiagnosticResult> {
-    const url = process.env.QDRANT_URL || "http://localhost:6333";
+    const rawUrl =
+      process.env.QDRANT_URL ||
+      "https://f504c5e3-9607-4b22-86d7-cb77e1b922e6.eu-central-1-0.aws.cloud.qdrant.io:6333";
+    const url = rawUrl.trim().replace(/\/$/, "");
     const apiKey = process.env.QDRANT_API_KEY;
 
     try {
-      // 1. Ham Fetch Denemesi
+      // 1. Raw Fetch Attempt without the problematic 'agent' property
+      // We rely on globally set NODE_TLS_REJECT_UNAUTHORIZED = "0"
+      let fetchDetails = "N/A";
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-        // SSL bypass fetch
-        const response = await fetch(`${url.replace(/\/$/, "")}/healthz`, {
+        const response = await fetch(`${url}/healthz`, {
           signal: controller.signal,
           headers: apiKey ? { "api-key": apiKey } : {},
-          // @ts-ignore
+          // @ts-ignore - Re-introducing the agent that works in checkNetwork
           agent: new (require("https").Agent)({ rejectUnauthorized: false }),
         });
+
         clearTimeout(timeoutId);
-        logger.info(
-          { status: response.status },
-          "Qdrant health check response",
-        );
+        fetchDetails = `HTTP ${response.status} ${response.statusText}`;
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
       } catch (fetchErr: any) {
-        logger.error({ error: fetchErr.message }, "Raw fetch failed");
-        throw new Error(`Raw Fetch Failed: ${fetchErr.message}`);
+        throw new Error(
+          `Raw Fetch Failed (Status: ${fetchDetails}): ${fetchErr.message}`,
+        );
       }
 
-      // 2. Client ile deneme
+      // 2. Client attempt
       await this.qdrantClient.getCollections();
       return {
         service: "Qdrant",
@@ -76,17 +81,16 @@ export class DoctorService {
     } catch (error: any) {
       let remedy = "QDRANT_URL ve QDRANT_API_KEY değişkenlerini kontrol edin.";
       const errorMsg = error.message || "Bilinmeyen hata";
-      const stack = error.stack || "";
 
       if (errorMsg.includes("fetch failed") || errorMsg.includes("aborted")) {
         remedy =
-          "Ağ Zaman Aşımı! SSL tünelinde sorun olabilir. NTU=0 ayarını kontrol edin.";
+          "Ağ Zaman Aşımı! SSL bypass devrede olmasına rağmen erişim yok. Cloudflare veya WAF ayarlarını kontrol edin.";
       }
 
       return {
         service: "Qdrant",
         status: "ERROR",
-        message: `Hata: ${errorMsg}\n🔍 Detay: ${stack.split("\n")[0]} (URL: ${url})`,
+        message: `Hata: ${errorMsg}\nURL: ${url}`,
         remedy,
       };
     }
@@ -169,12 +173,22 @@ export class DoctorService {
   }
 
   public async checkNetwork(): Promise<DiagnosticResult> {
+    const qdrantUrl = new URL(
+      process.env.QDRANT_URL ||
+        "https://f504c5e3-9607-4b22-86d7-cb77e1b922e6.eu-central-1-0.aws.cloud.qdrant.io:6333",
+    );
+
     const targets = [
-      { host: "qdrant", port: 6333 },
-      { host: "qdrant.turklawai.com", port: 443 },
-      { host: "5.182.33.26", port: 6333 },
-      { host: "5.182.33.26", port: 443 },
-      { host: "localhost", port: 6333 },
+      {
+        host: qdrantUrl.hostname,
+        port: qdrantUrl.port
+          ? parseInt(qdrantUrl.port)
+          : qdrantUrl.protocol === "https:"
+            ? 443
+            : 80,
+      },
+      { host: "google.com", port: 443 }, // Internet check
+      { host: "aejhzxvuegchakaknwts.supabase.co", port: 443 }, // Supabase check
     ];
 
     let report = "Ağ Tarama Sonuçları:\n";
