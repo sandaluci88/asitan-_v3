@@ -10,8 +10,12 @@ export class QdrantService {
   private collectionName: string;
 
   constructor() {
+    // SSL sorunlarını aşmak için global ayar
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
     this.client = new QdrantClient({
-      url: process.env.QDRANT_URL || "http://localhost:6333",
+      url:
+        process.env.QDRANT_URL?.replace(/\/$/, "") || "http://localhost:6333",
       apiKey: process.env.QDRANT_API_KEY,
       checkCompatibility: false,
     });
@@ -23,7 +27,6 @@ export class QdrantService {
       await this.client.getCollections();
       logger.info("✅ Qdrant connection successful");
 
-      // Temel koleksiyonları kontrol et/oluştur
       const collections = [
         this.collectionName,
         process.env.QDRANT_IMAGE_COLLECTION || "sandaluci_visual_memory",
@@ -69,9 +72,6 @@ export class QdrantService {
     }
   }
 
-  /**
-   * Saves product images into the specialized collection.
-   */
   public async upsertImage(
     productId: string,
     vector: number[],

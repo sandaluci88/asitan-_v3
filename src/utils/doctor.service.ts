@@ -22,8 +22,12 @@ export class DoctorService {
   private openai: OpenAI;
 
   constructor() {
+    // SSL bypass
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
     this.qdrantClient = new QdrantClient({
-      url: process.env.QDRANT_URL || "http://localhost:6333",
+      url:
+        process.env.QDRANT_URL?.replace(/\/$/, "") || "http://localhost:6333",
       apiKey: process.env.QDRANT_API_KEY,
       checkCompatibility: false,
     });
@@ -40,13 +44,17 @@ export class DoctorService {
     const apiKey = process.env.QDRANT_API_KEY;
 
     try {
-      // 1. Ham Fetch Denemesi (Ağ hatasını net görmek için)
+      // 1. Ham Fetch Denemesi
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const response = await fetch(`${url}/healthz`, {
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        // SSL bypass fetch
+        const response = await fetch(`${url.replace(/\/$/, "")}/healthz`, {
           signal: controller.signal,
           headers: apiKey ? { "api-key": apiKey } : {},
+          // @ts-ignore
+          agent: new (require("https").Agent)({ rejectUnauthorized: false }),
         });
         clearTimeout(timeoutId);
         logger.info(
@@ -54,10 +62,7 @@ export class DoctorService {
           "Qdrant health check response",
         );
       } catch (fetchErr: any) {
-        logger.error(
-          { error: fetchErr.message, stack: fetchErr.stack },
-          "Raw fetch failed",
-        );
+        logger.error({ error: fetchErr.message }, "Raw fetch failed");
         throw new Error(`Raw Fetch Failed: ${fetchErr.message}`);
       }
 
@@ -75,13 +80,7 @@ export class DoctorService {
 
       if (errorMsg.includes("fetch failed") || errorMsg.includes("aborted")) {
         remedy =
-          "Ağ Zaman Aşımı! Coolify'da servis adını (qdrant-xxx) veya Internal Network ayarlarını kontrol edin.";
-      } else if (
-        errorMsg.includes("refused") ||
-        errorMsg.includes("EHOSTUNREACH")
-      ) {
-        remedy =
-          "Bağlantı Reddedildi! Portun açık olduğundan ve servisin IP'yi dinlediğinden emin olun.";
+          "Ağ Zaman Aşımı! SSL tünelinde sorun olabilir. NTU=0 ayarını kontrol edin.";
       }
 
       return {
@@ -115,8 +114,7 @@ export class DoctorService {
         service: "Supabase",
         status: "ERROR",
         message: `Sorgu hatası: ${error.message}`,
-        remedy:
-          "SQL repair scriptini çalıştırdığınızdan ve Project Ref'in doğru olduğundan emin olun.",
+        remedy: "Supabase ayarlarını kontrol edin.",
       };
     }
   }
@@ -184,9 +182,16 @@ export class DoctorService {
       const start = Date.now();
       try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 2000);
-        await fetch(`http://${target.host}:${target.port}/healthz`, {
+        const id = setTimeout(() => controller.abort(), 3000);
+        const protocol = target.port === 443 ? "https" : "http";
+
+        await fetch(`${protocol}://${target.host}:${target.port}/healthz`, {
           signal: controller.signal,
+          // @ts-ignore
+          agent:
+            target.port === 443
+              ? new (require("https").Agent)({ rejectUnauthorized: false })
+              : undefined,
         });
         clearTimeout(id);
         report += `✅ ${target.host}:${target.port} -> ERİŞİLEBİLİR (${Date.now() - start}ms)\n`;
