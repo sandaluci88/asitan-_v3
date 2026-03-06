@@ -38,20 +38,26 @@ export class DoctorService {
   public async checkQdrant(): Promise<DiagnosticResult> {
     const url = process.env.QDRANT_URL || "http://localhost:6333";
     const apiKey = process.env.QDRANT_API_KEY;
-    
+
     try {
       // 1. Ham Fetch Denemesi (Ağ hatasını net görmek için)
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const response = await fetch(`${url}/healthz`, { 
+        const response = await fetch(`${url}/healthz`, {
           signal: controller.signal,
-          headers: apiKey ? { "api-key": apiKey } : {}
+          headers: apiKey ? { "api-key": apiKey } : {},
         });
         clearTimeout(timeoutId);
-        logger.info({ status: response.status }, "Qdrant health check response");
+        logger.info(
+          { status: response.status },
+          "Qdrant health check response",
+        );
       } catch (fetchErr: any) {
-        logger.error({ error: fetchErr.message, stack: fetchErr.stack }, "Raw fetch failed");
+        logger.error(
+          { error: fetchErr.message, stack: fetchErr.stack },
+          "Raw fetch failed",
+        );
         throw new Error(`Raw Fetch Failed: ${fetchErr.message}`);
       }
 
@@ -68,15 +74,20 @@ export class DoctorService {
       const stack = error.stack || "";
 
       if (errorMsg.includes("fetch failed") || errorMsg.includes("aborted")) {
-        remedy = "Ağ Zaman Aşımı! Coolify'da servis adını (qdrant-xxx) veya Internal Network ayarlarını kontrol edin.";
-      } else if (errorMsg.includes("refused") || errorMsg.includes("EHOSTUNREACH")) {
-        remedy = "Bağlantı Reddedildi! Portun açık olduğundan ve servisin IP'yi dinlediğinden emin olun.";
+        remedy =
+          "Ağ Zaman Aşımı! Coolify'da servis adını (qdrant-xxx) veya Internal Network ayarlarını kontrol edin.";
+      } else if (
+        errorMsg.includes("refused") ||
+        errorMsg.includes("EHOSTUNREACH")
+      ) {
+        remedy =
+          "Bağlantı Reddedildi! Portun açık olduğundan ve servisin IP'yi dinlediğinden emin olun.";
       }
 
       return {
         service: "Qdrant",
         status: "ERROR",
-        message: `Hata: ${errorMsg}\n🔍 Detay: ${stack.split('\n')[0]} (URL: ${url})`,
+        message: `Hata: ${errorMsg}\n🔍 Detay: ${stack.split("\n")[0]} (URL: ${url})`,
         remedy,
       };
     }
@@ -165,27 +176,29 @@ export class DoctorService {
       { host: "qdrant.turklawai.com", port: 443 },
       { host: "5.182.33.26", port: 6333 },
       { host: "5.182.33.26", port: 443 },
-      { host: "localhost", port: 6333 }
+      { host: "localhost", port: 6333 },
     ];
-    
+
     let report = "Ağ Tarama Sonuçları:\n";
     for (const target of targets) {
       const start = Date.now();
       try {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), 2000);
-        await fetch(`http://${target.host}:${target.port}/healthz`, { signal: controller.signal });
+        await fetch(`http://${target.host}:${target.port}/healthz`, {
+          signal: controller.signal,
+        });
         clearTimeout(id);
         report += `✅ ${target.host}:${target.port} -> ERİŞİLEBİLİR (${Date.now() - start}ms)\n`;
       } catch (e: any) {
         report += `❌ ${target.host}:${target.port} -> HATA: ${e.message}\n`;
       }
     }
-    
+
     return {
       service: "Network Scanner",
       status: "WARNING",
-      message: report
+      message: report,
     };
   }
 
