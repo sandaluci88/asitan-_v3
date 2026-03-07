@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard, InputFile } from "grammy";
+import { Bot, InlineKeyboard, InputFile, GrammyError } from "grammy";
 import * as fs from "fs";
 import * as path from "path";
 import http from "http";
@@ -1211,6 +1211,21 @@ if (botEnabled) {
       console.log(`📡 Health Check sunucusu ${port} portunda aktif.`);
     });
 
+  // Bot Hata Yönetimi (Polling hataları için kritik)
+  bot.catch((err) => {
+    const ctx = err.ctx;
+    const error = err.error;
+
+    if (error instanceof GrammyError && error.description.includes("Conflict")) {
+      console.error(
+        "⚠️ [Telegram Conflict] Bot başka bir yerde zaten çalışıyor. Polling durduruldu.",
+      );
+      return; // Süreci çökertme
+    }
+
+    console.error(`❌ Bot hata yakaladı (Update ${ctx.update.update_id}):`, error);
+  });
+
   // Botu Başlat
   console.log("🚀 Ayça Asistan Ayağa Kalkıyor...");
   bot.start().catch((err) => {
@@ -1219,7 +1234,7 @@ if (botEnabled) {
         "⚠️ [Telegram Conflict] Bot başka bir yerde zaten çalışıyor. Yerel bot başlatılamadı.",
       );
     } else {
-      console.error("❌ Bot hatası:", err);
+      console.error("❌ Bot başlatma hatası:", err);
     }
   });
 } else {
