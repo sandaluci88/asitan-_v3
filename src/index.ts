@@ -1191,22 +1191,23 @@ if (chatId) {
   console.log("📧 Gmail İzleme Aktif Edildi.");
 }
 
-// Health Check Sunucusu (Coolify için) - Sadece port verilmişse veya bot aktifse
-const port = process.env.PORT || 3001; // Next.js 3000 kullandığı için varsayılanı 3001 yaptık
+// Health Check Sunucusu (Coolify için)
+const port = 3001; // Next.js 3000 ile çakışmaması için 3001'e sabitliyoruz
 const botEnabled = process.env.BOT_ENABLED !== "false";
 
 if (botEnabled) {
   http
     .createServer((req, res) => {
-      if (req.url === "/health" || req.url === "/ping") {
+      // Root dahil tüm sağlık yolları 200 dönmeli ki Coolify "unhealthy" demesin
+      if (req.url === "/health" || req.url === "/ping" || req.url === "/") {
         res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end("Sandaluci Assistant is healthy!\n");
+        res.end("Sandaluci Assistant Bot is healthy!\n");
       } else {
         res.writeHead(404, { "Content-Type": "text/plain" });
-        res.end("404 Not Found - Use /health for status\n");
+        res.end("404 Not Found\n");
       }
     })
-    .listen(port, () => {
+    .listen(port, "0.0.0.0", () => {
       console.log(`📡 Health Check sunucusu ${port} portunda aktif.`);
     });
 
