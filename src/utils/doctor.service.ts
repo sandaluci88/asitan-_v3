@@ -144,32 +144,67 @@ export class DoctorService {
     }
   }
 
+  /**
+   * TCP socket ile portu test eder — HTTP'ye gerek yok, salt bağlantı kontrolü.
+   */
+  private testTcpPort(host: string, port: number, timeoutMs = 5000): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const net = require("net");
+      const start = Date.now();
+      const socket = new net.Socket();
+      socket.setTimeout(timeoutMs);
+      socket.connect(port, host, () => {
+        const elapsed = Date.now() - start;
+        socket.destroy();
+        resolve(elapsed);
+      });
+      socket.on("error", (err: Error) => { socket.destroy(); reject(err); });
+      socket.on("timeout", () => { socket.destroy(); reject(new Error("Timeout")); });
+    });
+  }
+
   public async checkNetwork(): Promise<DiagnosticResult> {
-    const LATENCY_WARNING_MS = 300; // Kazakistan VPS için 300ms eşiği
-    const targets = [
-      { host: "google.com", port: 443 }, // Internet check
-      { host: "aejhzxvuegchakaknwts.supabase.co", port: 443 }, // Supabase check
+    const LATENCY_THRESHOLD = 300;
+    // Kritik mail portları — sistem bunlar olmadan çalışmaz
+    const mailTargets = [
+      { host: "smtp.gmail.com", port: 587, label: "Gmail SMTP" },
+      { host: "imap.gmail.com", port: 993, label: "Gmail IMAP" },
+    ];
+
+    // Altyapı ve Genel İnternet kontrolleri
+    const infraTargets = [
+      { host: "aejhzxvuegchakaknwts.supabase.co", port: 443, label: "Supabase" },
+      { host: "google.com", port: 443, label: "Google (Internet)" },
     ];
 
     let report = "Ağ Tarama Sonuçları:\n";
     let hasNetworkError = false;
-    let hasHighLatency = false;
 
-    for (const target of targets) {
+    // Mail Port Kontrolleri (TCP)
+    for (const target of mailTargets) {
+      try {
+        const elapsed = await this.testTcpPort(target.host, target.port);
+        const warning = elapsed > LATENCY_THRESHOLD ? " ⚠️ Yüksek gecikme" : "";
+        report += `✅ ${target.label} -> ERİŞİLEBİLİR (${elapsed}ms)${warning}\n`;
+      } catch (e: any) {
+        hasNetworkError = true;
+        report += `❌ ${target.label} -> HATA: ${e.message}\n`;
+      }
+    }
+
+    // Altyapı Kontrolleri (HTTPS fetch)
+    for (const target of infraTargets) {
       const start = Date.now();
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const protocol = target.port === 443 ? "https" : "http";
+        const protocol = "https";
 
         await fetch(`${protocol}://${target.host}`, {
           method: "HEAD",
           signal: controller.signal,
           // @ts-ignore
-          agent:
-            target.port === 443
-              ? new (require("https").Agent)({ rejectUnauthorized: false })
-              : undefined,
+          agent: new (require("https").Agent)({ rejectUnauthorized: false }),
         }).catch((fetchErr: any) => {
           // Re-throw only real network errors; HTTP-level errors (4xx, 3xx) mean server is reachable
           const isNetworkError =
@@ -183,26 +218,18 @@ export class DoctorService {
 
         clearTimeout(timeoutId);
         const elapsed = Date.now() - start;
-        if (elapsed > LATENCY_WARNING_MS) {
-          hasHighLatency = true;
-          report += `✅ ${target.host}:${target.port} -> ERİŞİLEBİLİR (${elapsed}ms) ⚠️ Yüksek gecikme\n`;
-        } else {
-          report += `✅ ${target.host}:${target.port} -> ERİŞİLEBİLİR (${elapsed}ms)\n`;
-        }
+        const warning = elapsed > LATENCY_THRESHOLD ? " ⚠️ Yüksek gecikme" : "";
+        report += `✅ ${target.label} -> ERİŞİLEBİLİR (${elapsed}ms)${warning}\n`;
       } catch (e: any) {
         hasNetworkError = true;
         const msg = e.name === "AbortError" ? "Timeout (5s)" : e.message;
-        report += `❌ ${target.host}:${target.port} -> HATA: ${msg}\n`;
+        report += `❌ ${target.label} -> HATA: ${msg}\n`;
       }
     }
 
-    let finalStatus: DiagnosticResult["status"] = "OK";
-    if (hasNetworkError) finalStatus = "WARNING";
-    // High latency alone doesn't change OK to WARNING — only real errors do
-
     return {
       service: "Network Scanner",
-      status: finalStatus,
+      status: hasNetworkError ? "WARNING" : "OK",
       message: report,
     };
   }
