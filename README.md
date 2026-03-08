@@ -23,6 +23,8 @@ Bu bölüm, projenin başından sonuna kadar geçirdiği evreleri ve teknik baş
 ### 3. Bot Stabilitesi & Çakışma Yönetimi (Mart 2026)
 
 - **Çatışma Çözümü:** Telegram `409 Conflict` hataları artık sistemi çökertmez. `bot.catch` yapısı ile bot başka bir yerde çalışıyor olsa bile sistem uyarı verir ve diğer servisler (Health Check, API) çalışmaya devam eder.
+- **Mail Odaklı Teşhis (Doctor):** Sistem sağlığını sadece internet varlığına göre değil, Gmail SMTP (587) ve IMAP (993) portlarına doğrudan TCP bağlantısı kurarak denetleyen gelişmiş ağ tarayıcısı entegre edildi.
+- **Bölgesel Optimizasyon:** Kazakistan VPS sunucularındaki şebeke gecikmeleri için 300ms tolerans eşiği tanımlanarak gereksiz uyarıların önüne geçildi.
 - **Gelişmiş Health Check:** Coolify entegrasyonu için port 3000 üzerinde `/health` ve `/ping` desteği.
 
 ---
@@ -48,7 +50,7 @@ Bu bölüm, projenin başından sonuna kadar geçirdiği evreleri ve teknik baş
 ### 4. Güvenlik & İzleme
 
 - **Mükerrer İşlem Önleme:** E-posta UID'leri `processed_uids.json` ile kalıcı olarak depolanır.
-- **Doctor Service:** Sistem sağlığını (Database, LLM, Gmail, Network) anlık denetleyen `/doctor` komutu.
+- **Doctor Service (TCP Check):** Sistem sağlığını (Database, LLM, Gmail Portları, Network Latency) anlık denetleyen `/doctor` komutu. Mail portları TCP socket seviyesinde taranır.
 
 ---
 
