@@ -357,9 +357,12 @@ bot.on("callback_query:data", async (ctx) => {
         t("followup_noted_ongoing", workerLang as any),
         { parse_mode: "Markdown" },
       );
-    } else if (action === "assign_worker") {
+    } else if (action === "assign_worker" || action === "aw") {
       const [targetItemId, workerName] = itemId.split(":");
-      const itemData = orderService.getOrderItemById(targetItemId);
+      const itemData =
+        action === "aw"
+          ? orderService.getOrderItemByShortId(targetItemId)
+          : orderService.getOrderItemById(targetItemId);
       if (!itemData) {
         await ctx.answerCallbackQuery("❌ Ürün bulunamadı.");
         return;
@@ -645,7 +648,7 @@ async function processOrderDistribution(
             deptStaff.forEach((staff, index) => {
               keyboard.text(
                 staff.name,
-                `assign_worker:${item.id}:${staff.name}`,
+                `aw:${item.id.substring(0, 8)}:${staff.name}`,
               );
               if ((index + 1) % 2 === 0) keyboard.row();
             });

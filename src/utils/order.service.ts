@@ -1099,4 +1099,16 @@ export class OrderService {
         item.status === "bekliyor",
     );
   }
+
+  public getOrderItemByShortId(
+    shortId: string,
+  ): { order: OrderDetail; item: OrderItem } | null {
+    for (const order of this.orders) {
+      const item = order.items.find((i) => i.id.startsWith(shortId));
+      if (item) {
+        return { order, item };
+      }
+    }
+    return null;
+  }
 }
