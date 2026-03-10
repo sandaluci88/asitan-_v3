@@ -245,7 +245,7 @@ export class MessageHandler {
     const isEmailRequest = emailKeywords.some((kw) => text.includes(kw));
 
     if (isEmailRequest) {
-      await this.handleEmailRequest(ctx, text, isBoss);
+      await this.handleEmailRequest(ctx, text);
       return;
     }
 
@@ -271,6 +271,10 @@ export class MessageHandler {
       "hangi aşamada",
       "rapor",
       "bilgi ver",
+      "göster",
+      "listele",
+      "özet",
+      "liste",
     ];
     const isStatusQuery =
       (text.includes("sipariş") ||
@@ -302,7 +306,6 @@ export class MessageHandler {
   private async handleEmailRequest(
     ctx: Context,
     text: string,
-    isBoss: boolean,
   ) {
     await ctx.reply("📧 E-posta gönderim talebinizi inceliyorum...");
 
@@ -482,8 +485,12 @@ export class MessageHandler {
       ${JSON.stringify(ordersData, null, 2)}
       
       Yöneticinin bu sorusuna yukarıdaki verilere TıpaTıp ve eksiksiz uyarak, güzel, net ve profesyonel bir şirket asistanı (Ayça) gibi Rapor hazırla.
-      Eğer sorulan sipariş veya müşteri verilerde yoksa "Böyle bir sipariş kayıtlarımda bulunamadı" de.
-      Yorum veya gereksiz masal katma, sadece elindeki veriye sadık kal.
+      
+      🚨 KRİTİK KURAL: 
+      - Sadece ama sadece sana yukarıda JSON olarak verilen siparişleri raporla.
+      - Eğer yukarıdaki verilerde bir sipariş veya müşteri yoksa, KESİNLİKLE uydurma veri üretme ("Astana Hotel", "Almaty Cafe" gibi örnekleri asla kullanma).
+      - Veriler boşsa veya sorulan kişi verilerde yoksa "Kayıtlarımda bu kriterlere uygun bir sipariş bulunamadı" şeklinde cevap ver.
+      - Yorum veya hayali senaryolar ekleme.
     `;
 
     try {
