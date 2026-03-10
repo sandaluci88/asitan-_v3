@@ -96,17 +96,50 @@ export class StaffService {
   }
 
   public getStaffByDepartment(department: string): Staff[] {
-    return this.staffList.filter(
+    const staff = this.staffList.filter(
       (s) =>
         s.department.toLowerCase().includes(department.toLowerCase()) ||
         department.toLowerCase().includes(s.department.toLowerCase()),
     );
+
+    // TEST MODU İÇİN: Eğer bu departmanda hiç personel kayıtlı değilse,
+    // test işlemlerini yürütebilmeniz için sizin Telegram ID'nizi geçici olarak atıyoruz.
+    if (staff.length === 0 && process.env.TELEGRAM_CHAT_ID) {
+      return [
+        {
+          telegramId: Number(process.env.TELEGRAM_CHAT_ID),
+          name: `Test Ustası (${department})`,
+          department: department,
+          role: "Personnel",
+          language: "tr",
+        },
+      ];
+    }
+
+    return staff;
   }
 
   public getStaffByName(name: string): Staff | undefined {
-    return this.staffList.find(
+    const staff = this.staffList.find(
       (s) => s.name.toLowerCase() === name.toLowerCase(),
     );
+
+    // Sanal test personeli aranıyorsa doğrudan sanal bir obje döndür
+    if (
+      !staff &&
+      name.startsWith("Test Ustası") &&
+      process.env.TELEGRAM_CHAT_ID
+    ) {
+      return {
+        telegramId: Number(process.env.TELEGRAM_CHAT_ID),
+        name: name,
+        department: "Test",
+        role: "Personnel",
+        language: "tr",
+      };
+    }
+
+    return staff;
   }
 
   /**
