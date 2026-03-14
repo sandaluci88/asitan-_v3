@@ -212,8 +212,17 @@ export class OrderService {
       Döşemehane: "dept_upholstery",
       Boyahane: "dept_paint",
       Kumaş: "dept_fabric",
+      Satınalma: "dept_purchasing",
     };
-    const key = mapping[dept];
+    // Tam eşleşme ara, bulamazsan küçük harfle ara
+    let key = mapping[dept];
+    if (!key) {
+      const lowerDept = (dept || "").toLowerCase().trim();
+      const foundKey = Object.keys(mapping).find(
+        (k) => k.toLowerCase() === lowerDept,
+      );
+      if (foundKey) key = mapping[foundKey];
+    }
     return key ? t(key, lang) : dept;
   }
 
@@ -281,9 +290,10 @@ export class OrderService {
 
       🚨 KRİTİK KURALLAR:
       1. ÜRÜN PARÇALAMA: Her bir departman işi için AYRI kalem (item) oluştur.
-      2. DETAYLARIN KORUNMASI: Kumaş, boya ve teknik notları ilgili TÜM kalemlerin "details" kısmına ekle.
-      3. FABRIC VE PAINT ALANLARI: "fabricDetails" ve "paintDetails" nesnelerini doldur.
-      4. MÜŞTERİ BİLGİSİ: "customerName" alanına müşteri adını ve varsa proje adını yaz. Mail içinde "Müşteri:", "Proje:" veya "Ad Soyad:" gibi ifadeleri ara.
+      2. PLASTİK ÜRÜN KURALI: Eğer ürün türünde veya detaylarda "plastik" (sandalye, ayak vb.) geçiyorsa, bu ürünler "Satınalma" departmanına atanmalıdır.
+      3. DETAYLARIN KORUNMASI: Kumaş, boya ve teknik notları ilgili TÜM kalemlerin "details" kısmına ekle.
+      4. FABRIC VE PAINT ALANLARI: "fabricDetails" ve "paintDetails" nesnelerini doldur.
+      5. MÜŞTERİ BİLGİSİ: "customerName" alanına müşteri adını ve varsa proje adını yaz. Mail içinde "Müşteri:", "Proje:" veya "Ad Soyad:" gibi ifadeleri ara.
       
       İÇERİK:
       ${fullContent}
@@ -456,29 +466,92 @@ export class OrderService {
         updatedAt: new Date().toISOString(),
       };
 
-      // Kalemleri zenginleştir
-      order.items = order.items.map((item, index) => ({
-        ...item,
-        id: `${order.id}_${index}`,
-        status: "bekliyor",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        fabricDetails: item.fabricDetails
-          ? {
-              ...item.fabricDetails,
-              amount:
-                typeof (item.fabricDetails as any).amount === "string"
-                  ? parseFloat(
-                      (item.fabricDetails as any).amount.replace(
-                        /[^0-9.]/g,
-                        "",
-                      ),
-                    )
-                  : (item.fabricDetails as any).amount || 0,
-              arrived: false,
-            }
-          : undefined,
-      }));
+      // Kalemleri zenginleştir ve Türkçe kısımları temizle
+      order.items = order.items.map((item, index) => {
+        let cleanProduct = item.product || "";
+        let cleanDetails = item.details || "";
+
+        console.log(`🔍 [STRIP] Orijinal Ürün: "${cleanProduct}"`);
+
+        // Daha agresif temizlik: [RU] kısmını bul ve sonrasını al, veya / işaretinden sonrasını al
+        const ruMatch = cleanProduct.match(/\[RU\]\s*(.*)/i);
+        const trRuMatch = cleanProduct.match(/\[TR\].*?\/.*?\[RU\]\s*(.*)/i);
+
+        if (trRuMatch) {
+          cleanProduct = trRuMatch[1].trim();
+        } else if (ruMatch) {
+          cleanProduct = ruMatch[1].trim();
+        } else if (cleanProduct.includes("/")) {
+          const parts = cleanProduct.split("/");
+          cleanProduct = parts[parts.length - 1].trim();
+        }
+
+        // Details için aynısı
+        const ruMatchDetails = cleanDetails.match(/\[RU\]\s*(.*)/i);
+        const trRuMatchDetails = cleanDetails.match(
+          /\[TR\].*?\/.*?\[RU\]\s*(.*)/i,
+        );
+
+        if (trRuMatchDetails) {
+          cleanDetails = trRuMatchDetails[1].trim();
+        } else if (ruMatchDetails) {
+          cleanDetails = ruMatchDetails[1].trim();
+        } else if (cleanDetails.includes("/")) {
+          const parts = cleanDetails.split("/");
+          cleanDetails = parts[parts.length - 1].trim();
+        }
+
+        // [TR] veya [RU] tagleri kalmışsa temizle
+        cleanProduct = cleanProduct
+          .replace(/\[TR\]/gi, "")
+          .replace(/\[RU\]/gi, "")
+          .trim();
+        cleanDetails = cleanDetails
+          .replace(/\[TR\]/gi, "")
+          .replace(/\[RU\]/gi, "")
+          .trim();
+
+        console.log(`✅ [STRIP] Temiz Ürün: "${cleanProduct}"`);
+
+        // Plastik kuralı kontrolü
+        let finalDept = item.department;
+        const isPlastik =
+          item.product?.toLowerCase().includes("plastik") ||
+          item.details?.toLowerCase().includes("plastik");
+
+        if (isPlastik) {
+          console.log(
+            `🎯 [RULE] Plastik ürün tespit edildi, Satınalma'ya yönlendiriliyor: ${item.product}`,
+          );
+          finalDept = "Satınalma";
+        }
+
+        return {
+          ...item,
+          product: cleanProduct,
+          details: cleanDetails,
+          department: finalDept,
+          id: `${order.id}_${index}`,
+          status: "bekliyor",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          fabricDetails: item.fabricDetails
+            ? {
+                ...item.fabricDetails,
+                amount:
+                  typeof (item.fabricDetails as any).amount === "string"
+                    ? parseFloat(
+                        (item.fabricDetails as any).amount.replace(
+                          /[^0-9.]/g,
+                          "",
+                        ),
+                      )
+                    : (item.fabricDetails as any).amount || 0,
+                arrived: false,
+              }
+            : undefined,
+        };
+      });
 
       // Görselleri işle (Eğer Excel verisi varsa)
       if (isExcel && rawExcelData) {
@@ -490,6 +563,7 @@ export class OrderService {
         order.items.forEach((item) => {
           let hasAssignedImage = false;
 
+          // 1. Doğrudan satır numarası eşleşmesi (En güvenilir)
           if (item.rowIndex) {
             const excelMatch = rawExcelData.find(
               (r) => r._rowNumber === item.rowIndex,
@@ -499,12 +573,55 @@ export class OrderService {
               item.imageExtension = excelMatch._imageExtension || "png";
               hasAssignedImage = true;
               console.log(
-                `✅ [DEBUG] Resim Eşleşti: Ürün=${item.product}, Satır=${item.rowIndex}`,
+                `✅ [DEBUG] Resim Eşleşti (RowIndex): Ürün=${item.product}, Satır=${item.rowIndex}`,
               );
             }
           }
 
-          // Satırdan resim eşleşmediyse veya satır bilgisi yoksa, floating (serbest) resimlerden birini ata
+          // 2. Satır eşleşmediyse temizlenmiş isim üzerinden ara (Fallback 1)
+          if (!hasAssignedImage) {
+            const productLower = item.product.toLowerCase();
+            const detailsLower = (item.details || "").toLowerCase();
+
+            // Plastik ürünler için özel kontrol
+            if (
+              productLower.includes("plastik") ||
+              detailsLower.includes("plastik")
+            ) {
+              console.log(
+                `🔍 [IMG] Plastik ürün için görsel eşleştirme deneniyor: ${item.product}`,
+              );
+              // Floating resim varsa ve daha atanmamışsa ilkini buna ata
+              if (floatingImages && floatingImages.length > floatingIndex) {
+                item.imageBuffer = floatingImages[floatingIndex];
+                item.imageExtension = "png";
+                console.log(
+                  `✅ [IMG] Plastik ürün için floating görsel atandı.`,
+                );
+                hasAssignedImage = true;
+              }
+            }
+
+            // Genel isim eşleşmesi (plastik değilse veya floating yoksa)
+            if (!hasAssignedImage) {
+              const nameMatch = rawExcelData.find((r) => {
+                const col3 = String(r.Col3 || "").toLowerCase();
+                return (
+                  col3.includes(productLower) || productLower.includes(col3)
+                );
+              });
+              if (nameMatch && nameMatch._imageBuffer) {
+                item.imageBuffer = nameMatch._imageBuffer;
+                item.imageExtension = nameMatch._imageExtension || "png";
+                hasAssignedImage = true;
+                console.log(
+                  `✅ [DEBUG] Resim Eşleşti (NameMatch): Ürün=${item.product}`,
+                );
+              }
+            }
+          }
+
+          // 3. Satırdan resim eşleşmediyse floating (serbest) resimlerden birini ata (Fallback 2)
           if (
             !hasAssignedImage &&
             floatingImages &&
@@ -657,9 +774,7 @@ export class OrderService {
       const worker = OrderService.escapeHTML(
         item.assignedWorker || t("dist_not_assigned", lang),
       );
-      const details = item.details
-        ? OrderService.escapeHTML(item.details)
-        : "";
+      const details = item.details ? OrderService.escapeHTML(item.details) : "";
 
       table += `<b>${index + 1}.</b> ${product}\n`;
       table += `   👉 <i>${dept}</i>\n`;
@@ -749,59 +864,71 @@ export class OrderService {
       currentY += 60;
 
       // --- TABLE HEADER ---
-      const colX = [30, 150, 300, 430]; // Ürün, Detay, Departman, Personel
+      const colImg = 35; // Resim kolonu (X başlangıcı)
+      const colX = [95, 210, 350, 440]; // Ürün, Detay, Departman, Personel
       doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
       doc.fillColor("#000").font(boldFont).fontSize(9);
-      doc.text(t("pdf_table_product", "ru"), colX[0] + 5, currentY + 5);
-      doc.text(t("pdf_table_details", "ru"), colX[1] + 5, currentY + 5);
-      doc.text(t("dept_label", "ru"), colX[2] + 5, currentY + 5);
-      doc.text(t("worker_label", "ru"), colX[3] + 5, currentY + 5);
+      doc.text("Resim/Фото", colImg, currentY + 5);
+      doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
+      doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
+      doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
+      doc.text(t("worker_label", "ru"), colX[3], currentY + 5);
 
       currentY += 20;
 
       // --- ROWS ---
       order.items.forEach((item, index) => {
-        const rowHeight = 45;
+        const rowHeight = 70; // Satır yüksekliğini görsel için artırdık
         if (currentY + rowHeight > 750) {
           doc.addPage();
           currentY = 30;
           // Sub-header repeated on new page
           doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
           doc.fillColor("#000").font(boldFont).fontSize(9);
-          doc.text(t("pdf_table_product", "ru"), colX[0] + 5, currentY + 5);
-          doc.text(t("pdf_table_details", "ru"), colX[1] + 5, currentY + 5);
-          doc.text(t("dept_label", "ru"), colX[2] + 5, currentY + 5);
-          doc.text(t("worker_label", "ru"), colX[3] + 5, currentY + 5);
+          doc.text("Resim/Фото", colImg, currentY + 5);
+          doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
+          doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
+          doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
+          doc.text(t("worker_label", "ru"), colX[3], currentY + 5);
           currentY += 20;
         }
 
         doc.rect(30, currentY, 535, rowHeight).stroke("#eee");
 
+        // Görsel Ekleme
+        if (item.imageBuffer) {
+          try {
+            doc.image(item.imageBuffer, colImg - 2, currentY + 5, {
+              fit: [55, 60],
+            });
+          } catch (e) {
+            console.error("Görsel basılamadı:", e);
+          }
+        }
+
         doc
           .font(boldFont)
           .fontSize(9)
-          .text(`${index + 1}. ${item.product}`, colX[0] + 5, currentY + 10, {
+          .fillColor("#000")
+          .text(`${index + 1}. ${item.product}`, colX[0], currentY + 10, {
             width: 110,
           });
         doc
           .font(defaultFont)
           .fontSize(8)
-          .text(item.details || "-", colX[1] + 5, currentY + 5, { width: 140 });
+          .text(item.details || "-", colX[1], currentY + 5, { width: 135 });
 
         const ruDept = this.getDeptTranslation(item.department, "ru");
-        doc.text(
-          `${ruDept}\n(${item.department})`,
-          colX[2] + 5,
-          currentY + 10,
-          { width: 120 },
-        );
+        doc.text(`${ruDept}\n(${item.department})`, colX[2], currentY + 10, {
+          width: 85,
+        });
 
         const worker =
           item.assignedWorker || t("dist_not_assigned", "ru").toUpperCase();
         doc
           .font(boldFont)
           .fillColor(item.assignedWorker ? "#1a73e8" : "#d93025")
-          .text(worker, colX[3] + 5, currentY + 15, { width: 100 });
+          .text(worker, colX[3], currentY + 15, { width: 120 });
         doc.fillColor("#000");
 
         currentY += rowHeight;

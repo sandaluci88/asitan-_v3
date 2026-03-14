@@ -31,6 +31,7 @@ Bu bölüm, projenin başından sonuna kadar geçirdiği evreleri ve teknik baş
 - **Aşama 14: Kumaş & Özet Raporlama (Mart 2026):** Dağıtım sonunda otomatik "Kumaş Sipariş Formu" (PDF) ve "Genel Sipariş Özet Raporu" (PDF) Marina'ya özel olarak üretilip iletilecek şekilde yapılandırıldı.
 - **Aşama 15: Zamanlanmış Silsile & Sıralı Dağıtım (Mart 2026):** Sipariş dağıtım sürecinde kontrolü artırmak için "20-40-60 Saniye" kuralı getirildi. Otomatik birimler (Karkas, Metal, Boya) 20 saniye sonra, Marina onay butonları 40 saniye sonra, Kumaş PDF'i ise 60 saniye sonra iletilecek şekilde yapılandırıldı. Manuel seçim sonrası final raporu için de +20 saniye gecikme eklendi.
 - **Aşama 16: Gelişmiş Excel Resim Analizi & Temizlik (Mart 2026):** Excel dosyalarından resim çıkarma mantığı (Smart Score) güçlendirildi. Test verilerini hem veritabanından hem de yerel dosyalardan (orders, processed_uids vb.) tamamen temizleyen `cleanup.ts` scripti devreye alındı.
+- **Aşama 17: Plastik Üretim Akışı & Dikişhane Görünürlüğü (Mart 2026):** "Plastik" içeren ürünlerin otomatik olarak Satınalma (Marina) departmanına Rusça ve resimli olarak yönlendirilmesi sağlandı. Dikişhane ve diğer manuel birimler için departman eşleme mantığı (`isManualDept`) güçlendirilerek tüm dil varyasyonlarında (TR/RU) tam görünürlük sağlandı.
 
 ### 3. Bot Stabilitesi & Webhook Mimarisi (Mart 2026)
 

@@ -14,12 +14,25 @@ import { DoctorService } from "./utils/doctor.service";
 import { logger } from "./utils/logger";
 
 // --- Dinamik Ayarlar ve Yardımcılar ---
-const MANUAL_DEPARTMENTS = ["Dikişhane", "Döşemehane"];
+const MANUAL_DEPARTMENTS = [
+  "Dikişhane", "Döşemehane", "Dikiş", "Döşeme", 
+  "Швейный цех", "Обивочный цех", "Швейный", "Обивочный",
+  "Sewing", "Upholstery"
+];
+const isManualDept = (dept: string) => {
+  const d = (dept || "").toLowerCase().trim();
+  if (!d) return false;
+  return MANUAL_DEPARTMENTS.some((manual) => {
+    const m = manual.toLowerCase();
+    return d.includes(m) || m.includes(d);
+  });
+};
 
 const getDeptButtonLabel = (dept: string, isAssigned: boolean = false) => {
   const action = isAssigned ? "Değiştir" : "Seç";
-  if (dept === "Dikişhane") return `Dikişçi ${action}`;
-  if (dept === "Döşemehane") return `Döşemeci ${action}`;
+  if (dept.toLowerCase().includes("dikiş")) return `Dikişçi ${action}`;
+  if (dept.toLowerCase().includes("döşeme")) return `Döşemeci ${action}`;
+  if (dept.toLowerCase().includes("satınalma")) return `Satınalma ${action}`;
   return `${dept} ${action}`;
 };
 
@@ -167,7 +180,9 @@ bot.callbackQuery(/^select_dept_staff:(.+)\|(.+)$/, async (ctx) => {
   const deptName = ctx.match[2] as string;
   const staffList = staffService.getStaffByDepartment(deptName);
   if (staffList.length === 0) {
-    return ctx.answerCallbackQuery(`⚠️ ${deptName} için kayıtlı personel bulunamadı.`);
+    return ctx.answerCallbackQuery(
+      `⚠️ ${deptName} için kayıtlı personel bulunamadı.`,
+    );
   }
 
   const keyboard = new InlineKeyboard();
@@ -210,16 +225,15 @@ bot.callbackQuery(/^aw:(.+):(.+):(.+)$/, async (ctx) => {
   const remainingDepts = Array.from(
     new Set(
       draft.order.items
-        .filter(
-          (i: any) =>
-            MANUAL_DEPARTMENTS.includes(i.department) && !i.assignedWorker,
-        )
+        .filter((i: any) => isManualDept(i.department) && !i.assignedWorker)
         .map((i: any) => i.department),
     ),
   );
 
   remainingDepts.forEach((d: any) => {
-    keyboard.text(getDeptButtonLabel(d, false), `select_dept_staff:${draftId}|${d}`).row();
+    keyboard
+      .text(getDeptButtonLabel(d, false), `select_dept_staff:${draftId}|${d}`)
+      .row();
   });
 
   if (remainingDepts.length === 0) {
@@ -246,11 +260,7 @@ bot.callbackQuery(/^finalize_dist:(.+)$/, async (ctx) => {
   const unassignedManualDepts = Array.from(
     new Set(
       draft.order.items
-        .filter(
-          (i: any) =>
-            ["Dikişhane", "Döşemehane"].includes(i.department) &&
-            !i.assignedWorker,
-        )
+        .filter((i: any) => isManualDept(i.department) && !i.assignedWorker)
         .map((i: any) => i.department),
     ),
   );
@@ -273,9 +283,7 @@ bot.callbackQuery(/^finalize_dist:(.+)$/, async (ctx) => {
   ) as string[];
 
   // Sadece Manuel olanları filtreleyelim
-  const onlyManual = assignedDepts.filter((d) =>
-    MANUAL_DEPARTMENTS.includes(d),
-  );
+  const onlyManual = assignedDepts.filter((d) => isManualDept(d));
 
   if (onlyManual.length > 0) {
     await processOrderDistribution(
@@ -291,8 +299,12 @@ bot.callbackQuery(/^finalize_dist:(.+)$/, async (ctx) => {
   // 2. Marina'ya final raporunu 20 saniye sonra gönder
   setTimeout(async () => {
     try {
-      console.log(`🕒 [FLOW] Final raporu için 20 saniye beklendi, şimdi gönderiliyor... (${draft.order.orderNumber})`);
-      const summaryPdf = await orderService.generateMarinaSummaryPDF(draft.order);
+      console.log(
+        `🕒 [FLOW] Final raporu için 20 saniye beklendi, şimdi gönderiliyor... (${draft.order.orderNumber})`,
+      );
+      const summaryPdf = await orderService.generateMarinaSummaryPDF(
+        draft.order,
+      );
       await bot.api.sendDocument(
         marinaId,
         new InputFile(summaryPdf, `Final_Rapor_${draft.order.orderNumber}.pdf`),
@@ -320,7 +332,7 @@ bot.callbackQuery(/^auto_distribute:(.+)$/, async (ctx) => {
 
   // Eğer hiç manuel departman yoksa direkt finalize et
   const hasManual = draft.order.items.some((i: any) =>
-    MANUAL_DEPARTMENTS.includes(i.department),
+    isManualDept(i.department),
   );
   if (!hasManual) {
     // finalize_dist logic
@@ -353,17 +365,22 @@ bot.callbackQuery(/^back_to_draft:(.+)$/, async (ctx) => {
   const deptsInOrder = Array.from(
     new Set(draft.order.items.map((i: any) => i.department as string)),
   ) as string[];
-  const relevantManual = deptsInOrder.filter((d) => MANUAL_DEPARTMENTS.includes(d));
+  const relevantManual = deptsInOrder.filter((d) => isManualDept(d));
 
   relevantManual.forEach((d) => {
     const isAssigned = draft.order.items.some(
       (i: any) => i.department === d && i.assignedWorker,
     );
-    keyboard.text(getDeptButtonLabel(d, isAssigned), `select_dept_staff:${draftId}|${d}`).row();
+    keyboard
+      .text(
+        getDeptButtonLabel(d, isAssigned),
+        `select_dept_staff:${draftId}|${d}`,
+      )
+      .row();
   });
 
   const remaining = draft.order.items.filter(
-    (i: any) => MANUAL_DEPARTMENTS.includes(i.department) && !i.assignedWorker,
+    (i: any) => isManualDept(i.department) && !i.assignedWorker,
   );
   if (remaining.length === 0) {
     keyboard
@@ -465,10 +482,13 @@ async function processOrderDistribution(
             .map((s) => s.telegramId)
             .filter((id) => !!id) as number[];
 
-          targetIds =
-            departmentalStaffIds.length > 0
-              ? departmentalStaffIds
-              : [parseInt(marinaId)];
+          if (departmentalStaffIds.length > 0) {
+            targetIds = departmentalStaffIds;
+          } else {
+            // Hiç kimse bulunamadıysa Marina'ya gönder
+            console.log(`⚠️ ${currentDept} için personel yok, Marina'ya gönderiliyor.`);
+            targetIds = [parseInt(marinaId)];
+          }
         }
       }
 
@@ -476,17 +496,10 @@ async function processOrderDistribution(
         if (!targetId) continue;
 
         const staff = staffService.getStaffByTelegramId(targetId);
-        const lang = staff?.language || "ru";
+        // Marina'ya giden Satınalma (Plastik) iş emirleri mutlaka RU olmalı
+        const lang = currentDept.toLowerCase() === "satınalma" ? "ru" : (staff?.language || "ru");
 
-        // PDF Önizleme ve metin mesajını HTML olarak gönder
-        await bot.api.sendPhoto(
-          targetId,
-          new InputFile(pdfViewBuffer, `job_order.png`),
-          {
-            caption: deptMsg,
-            parse_mode: "HTML",
-          },
-        );
+        // Sadece PDF dokümanını gönder (görsel önizlemeye ve detaylı metne gerek yok)
 
         try {
           await bot.api.sendDocument(
@@ -506,8 +519,6 @@ async function processOrderDistribution(
 
         // ESKİ MANUEL ATAMA LANTIĞI (DRAFT FLOW İLE DEĞİŞTİ - İHTİYAÇ KALMADI)
         // Sadece Kumaş ve Statü güncelleme kısımları kalsın
-
-
 
         if (staff) {
           for (const dItem of deptItems) {
@@ -579,10 +590,8 @@ if (process.env.GMAIL_ENABLED !== "false") {
         gmailService = GmailService.getInstance();
       }
       logger.info("🔍 Gmail kontrol ediliyor...");
-      // The instruction for gmail.service.ts cannot be applied here as this file only calls the service.
-      // The `processUnreadMessages` method itself would need to be modified in `gmail.service.ts`.
-      // Assuming the instruction implies that `processUnreadMessages` should internally use `seen: false`.
-      await gmailService.processUnreadMessages(1, async (msg: any) => {
+      // Standart: Sadece okunmamış mesajları işle
+      await gmailService.processUnreadMessages(10, async (msg: any) => {
         if (processedUids.has(msg.uid.toString())) {
           logger.info(`🔄 UID ${msg.uid} zaten işlendi, atlanıyor.`);
           return;
@@ -705,7 +714,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
                 i.department.toLowerCase().includes("kumaş"),
               );
               const hasManualDepts = order.items.some((i: any) =>
-                MANUAL_DEPARTMENTS.includes(i.department),
+                isManualDept(i.department),
               );
 
               // PDF Önizleme Resmi Oluşturma (Opsiyonel)
@@ -716,15 +725,17 @@ if (process.env.GMAIL_ENABLED !== "false") {
 
               const autoDepts = Array.from(
                 new Set(order.items.map((i: any) => i.department)),
-              ).filter((d: any) => !MANUAL_DEPARTMENTS.includes(d)) as string[];
+              ).filter((d: any) => !isManualDept(d)) as string[];
 
               // --- SİLSİLE (TIMING) BAŞLANGICI ---
-              
+
               // 1. ADIM: 20 Saniye sonra OTOMATİK departmanlara gönder
               if (autoDepts.length > 0) {
                 setTimeout(async () => {
                   try {
-                    console.log(`🕒 [FLOW] Otomatik birimler için 20 saniye beklendi, gönderiliyor... (${order.orderNumber})`);
+                    console.log(
+                      `🕒 [FLOW] Otomatik birimler için 20 saniye beklendi, gönderiliyor... (${order.orderNumber})`,
+                    );
                     await processOrderDistribution(
                       order,
                       images,
@@ -734,41 +745,60 @@ if (process.env.GMAIL_ENABLED !== "false") {
                       false,
                     );
                   } catch (autoErr) {
-                    console.error("❌ [FLOW] Otomatik dağıtım hatası:", autoErr);
+                    console.error(
+                      "❌ [FLOW] Otomatik dağıtım hatası:",
+                      autoErr,
+                    );
                   }
                 }, 20000);
               }
 
               // 2. ADIM: 40 Saniye sonra MARINA'ya bildirim/seçim gönder
               setTimeout(async () => {
-                const autoInfo = autoDepts.length > 0 ? `\n\n✅ <b>Birimlere İş Emirleri Gönderildi:</b> ${autoDepts.join(", ")}` : "";
-                
+                const autoInfo =
+                  autoDepts.length > 0
+                    ? `\n\n✅ <b>Birimlere İş Emirleri Gönderildi:</b> ${autoDepts.join(", ")}`
+                    : "";
+
                 if (hasManualDepts) {
                   const keyboard = new InlineKeyboard();
                   const deptsToAssign = Array.from(
                     new Set(
                       order.items
-                        .filter((i: any) => MANUAL_DEPARTMENTS.includes(i.department))
-                        .map((i: any) => i.department as string)
-                    )
+                        .filter((i: any) => isManualDept(i.department))
+                        .map((i: any) => i.department as string),
+                    ),
                   );
-                  
-                  deptsToAssign.forEach(d => {
-                    keyboard.text(getDeptButtonLabel(d, false), `select_dept_staff:${draftId}|${d}`).row();
+
+                  deptsToAssign.forEach((d) => {
+                    keyboard
+                      .text(
+                        getDeptButtonLabel(d, false),
+                        `select_dept_staff:${draftId}|${d}`,
+                      )
+                      .row();
                   });
-                  
-                  keyboard.text("🚀 DAĞITIMI BAŞLAT", `auto_distribute:${draftId}`).row();
+
+                  keyboard
+                    .text("🚀 DAĞITIMI BAŞLAT", `auto_distribute:${draftId}`)
+                    .row();
                   keyboard.text("❌ İptal Et", `reject_order:${draftId}`);
 
                   const reportCaption = `📝 <b>Sipariş Raporu</b>\n\n${visualReport}${autoInfo}\n\n<b>Personel ataması bekleniyor:</b>`;
-                  console.log(`🕒 [FLOW] Marina seçimi için 40 saniye beklendi, gönderiliyor... (${order.orderNumber})`);
+                  console.log(
+                    `🕒 [FLOW] Marina seçimi için 40 saniye beklendi, gönderiliyor... (${order.orderNumber})`,
+                  );
 
                   if (pdfPreviewImg) {
-                    await bot.api.sendPhoto(marinaId, new InputFile(pdfPreviewImg, "preview.png"), {
-                      caption: reportCaption,
-                      parse_mode: "HTML",
-                      reply_markup: keyboard,
-                    });
+                    await bot.api.sendPhoto(
+                      marinaId,
+                      new InputFile(pdfPreviewImg, "preview.png"),
+                      {
+                        caption: reportCaption,
+                        parse_mode: "HTML",
+                        reply_markup: keyboard,
+                      },
+                    );
                   } else {
                     await bot.api.sendMessage(marinaId, reportCaption, {
                       parse_mode: "HTML",
@@ -778,22 +808,38 @@ if (process.env.GMAIL_ENABLED !== "false") {
                 } else {
                   // Manuel birim yoksa sadece özet gönder
                   const finalMsg = `✅ <b>Sipariş Dağıtımı Tamamlandı</b>\n\n${visualReport}${autoInfo}`;
-                  console.log(`🕒 [FLOW] Final özet için 40 saniye beklendi, gönderiliyor... (${order.orderNumber})`);
-                  
+                  console.log(
+                    `🕒 [FLOW] Final özet için 40 saniye beklendi, gönderiliyor... (${order.orderNumber})`,
+                  );
+
                   try {
-                    const summaryPdf = await orderService.generateMarinaSummaryPDF(order);
-                    await bot.api.sendDocument(marinaId, new InputFile(summaryPdf, `Siparis_Ozeti_${order.orderNumber}.pdf`), {
-                      caption: `${finalMsg}\n\n📄 <b>SİPARİŞ ÖZET RAPORU / ОТЧЕТ ПО ЗАКАЗУ</b> (PDF)`,
-                      parse_mode: "HTML",
-                    });
+                    const summaryPdf =
+                      await orderService.generateMarinaSummaryPDF(order);
+                    await bot.api.sendDocument(
+                      marinaId,
+                      new InputFile(
+                        summaryPdf,
+                        `Siparis_Ozeti_${order.orderNumber}.pdf`,
+                      ),
+                      {
+                        caption: `${finalMsg}\n\n📄 <b>SİPARİŞ ÖZET RAPORU / ОТЧЕТ ПО ЗАКАЗУ</b> (PDF)`,
+                        parse_mode: "HTML",
+                      },
+                    );
                   } catch (sumErr) {
                     if (pdfPreviewImg) {
-                      await bot.api.sendPhoto(marinaId, new InputFile(pdfPreviewImg, "preview.png"), {
-                        caption: finalMsg,
+                      await bot.api.sendPhoto(
+                        marinaId,
+                        new InputFile(pdfPreviewImg, "preview.png"),
+                        {
+                          caption: finalMsg,
+                          parse_mode: "HTML",
+                        },
+                      );
+                    } else {
+                      await bot.api.sendMessage(marinaId, finalMsg, {
                         parse_mode: "HTML",
                       });
-                    } else {
-                      await bot.api.sendMessage(marinaId, finalMsg, { parse_mode: "HTML" });
                     }
                   }
                 }
@@ -803,12 +849,23 @@ if (process.env.GMAIL_ENABLED !== "false") {
               if (fabricItems.length > 0) {
                 setTimeout(async () => {
                   try {
-                    console.log(`🕒 [FLOW] Kumaş raporu için 60 saniye beklendi, gönderiliyor... (${order.orderNumber})`);
-                    const fabricPdf = await orderService.generateFabricOrderPDF(order);
-                    await bot.api.sendDocument(marinaId, new InputFile(fabricPdf, `Kumas_Siparisi_${order.orderNumber}.pdf`), {
-                      caption: "🧶 <b>KUMAŞ SİPARİŞ RAPORU / ЗАКАЗ ТКАНИ</b> (PDF)",
-                      parse_mode: "HTML",
-                    });
+                    console.log(
+                      `🕒 [FLOW] Kumaş raporu için 60 saniye beklendi, gönderiliyor... (${order.orderNumber})`,
+                    );
+                    const fabricPdf =
+                      await orderService.generateFabricOrderPDF(order);
+                    await bot.api.sendDocument(
+                      marinaId,
+                      new InputFile(
+                        fabricPdf,
+                        `Kumas_Siparisi_${order.orderNumber}.pdf`,
+                      ),
+                      {
+                        caption:
+                          "🧶 <b>KUMAŞ SİPARİŞ RAPORU / ЗАКАЗ ТКАНИ</b> (PDF)",
+                        parse_mode: "HTML",
+                      },
+                    );
                   } catch (fErr) {
                     console.error("❌ Kumaş PDF hatası:", fErr);
                   }
@@ -834,44 +891,68 @@ if (process.env.GMAIL_ENABLED !== "false") {
             draftOrderService.saveDraft(draftId, { order, images });
             const visualReport = orderService.generateVisualTable(order);
             const marinaId = process.env.TELEGRAM_CHAT_ID || "";
-            
+
             const keyboard = new InlineKeyboard();
             const deptsToAssign = Array.from(
               new Set(
                 order.items
                   .filter((i: any) => MANUAL_DEPARTMENTS.includes(i.department))
-                  .map((i: any) => i.department as string)
-              )
+                  .map((i: any) => i.department as string),
+              ),
             );
-            
-            deptsToAssign.forEach(d => {
-              keyboard.text(getDeptButtonLabel(d, false), `select_dept_staff:${draftId}|${d}`).row();
+
+            deptsToAssign.forEach((d) => {
+              keyboard
+                .text(
+                  getDeptButtonLabel(d, false),
+                  `select_dept_staff:${draftId}|${d}`,
+                )
+                .row();
             });
-            
-            keyboard.text("🚀 DAĞITIMI BAŞLAT", `auto_distribute:${draftId}`).row();
+
+            keyboard
+              .text("🚀 DAĞITIMI BAŞLAT", `auto_distribute:${draftId}`)
+              .row();
             keyboard.text("❌ İptal Et", `reject_order:${draftId}`);
             const autoDepts = Array.from(
               new Set(order.items.map((i: any) => i.department)),
-            ).filter((d: any) => !MANUAL_DEPARTMENTS.includes(d)) as string[];
+            ).filter((d: any) => !isManualDept(d)) as string[];
 
             // 1. ADIM: 20 saniye sonra OTOMATİK birimler (Text)
             if (autoDepts.length > 0) {
               setTimeout(async () => {
                 try {
-                  console.log(`🕒 [FLOW] (Text) Otomatik birimler için 20 saniye beklendi... (${order.orderNumber})`);
-                  await processOrderDistribution(order, images, [], undefined, autoDepts, false);
+                  console.log(
+                    `🕒 [FLOW] (Text) Otomatik birimler için 20 saniye beklendi... (${order.orderNumber})`,
+                  );
+                  await processOrderDistribution(
+                    order,
+                    images,
+                    [],
+                    undefined,
+                    autoDepts,
+                    false,
+                  );
                 } catch (distErr) {
-                  logger.error({ err: distErr }, "Otomatik dağıtım hatası (Text)");
+                  logger.error(
+                    { err: distErr },
+                    "Otomatik dağıtım hatası (Text)",
+                  );
                 }
               }, 20000);
             }
 
             // 2. ADIM: 40 saniye sonra Marina bildirimi (Text)
             setTimeout(async () => {
-              const autoInfo = autoDepts.length > 0 ? `\n\n✅ <b>Birimlere İş Emirleri Gönderildi:</b> ${autoDepts.join(", ")}` : "";
+              const autoInfo =
+                autoDepts.length > 0
+                  ? `\n\n✅ <b>Birimlere İş Emirleri Gönderildi:</b> ${autoDepts.join(", ")}`
+                  : "";
               const reportCaption = `📝 <b>Sipariş Raporu</b>\n\n${visualReport}${autoInfo}`;
-              console.log(`🕒 [FLOW] (Text) Marina bildirimi için 40 saniye beklendi... (${order.orderNumber})`);
-              
+              console.log(
+                `🕒 [FLOW] (Text) Marina bildirimi için 40 saniye beklendi... (${order.orderNumber})`,
+              );
+
               if (marinaId) {
                 await bot.api.sendMessage(marinaId, reportCaption, {
                   parse_mode: "HTML",
