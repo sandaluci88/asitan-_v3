@@ -20,8 +20,7 @@ export class DoctorService {
   private openai: OpenAI;
 
   constructor() {
-    // SSL bypass
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    // SSL/TLS verification enabled by default
 
     this.supabaseUrl = process.env.SUPABASE_URL || "";
     this.supabaseKey = process.env.SUPABASE_KEY || "";
@@ -129,7 +128,7 @@ export class DoctorService {
         user: process.env.GMAIL_USER || "",
         pass: process.env.GMAIL_PASS || "",
       },
-      tls: { rejectUnauthorized: false },
+      tls: { rejectUnauthorized: true },
     });
     try {
       await client.connect();
@@ -222,7 +221,7 @@ export class DoctorService {
           method: "HEAD",
           signal: controller.signal,
           // @ts-ignore
-          agent: new (require("https").Agent)({ rejectUnauthorized: false }),
+          agent: new (require("https").Agent)({ rejectUnauthorized: true }),
         }).catch((fetchErr: any) => {
           // Re-throw only real network errors; HTTP-level errors (4xx, 3xx) mean server is reachable
           const isNetworkError =

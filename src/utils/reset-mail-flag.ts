@@ -14,7 +14,7 @@ async function resetMailFlags(uid: string) {
     },
     logger: false,
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
     },
   });
 
@@ -65,4 +65,7 @@ async function resetMailFlags(uid: string) {
   }
 }
 
-resetMailFlags("86");
+async function resetAll() {
+  await resetMailFlags("89");
+}
+resetAll();

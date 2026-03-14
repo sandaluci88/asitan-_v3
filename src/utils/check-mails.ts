@@ -14,7 +14,7 @@ async function checkMails() {
     },
     logger: false,
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
     },
   });
 

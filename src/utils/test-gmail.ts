@@ -16,7 +16,7 @@ async function testGmail() {
       user: process.env.GMAIL_USER || "",
       pass: process.env.GMAIL_PASS || "",
     },
-    tls: { rejectUnauthorized: false },
+    tls: { rejectUnauthorized: true },
   });
 
   try {

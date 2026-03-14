@@ -132,8 +132,20 @@ bot.use(async (ctx, next) => {
   (ctx as any).role = isBoss ? "boss" : isRegisteredStaff ? "staff" : "guest";
   (ctx as any).staffInfo = staffMember;
 
-  const isRegisterCommand = ctx.message?.text?.startsWith("/kayit");
-  const isStartCommand = ctx.message?.text?.startsWith("/start");
+  const text = ctx.message?.text || "";
+  const isRegisterCommand = text.startsWith("/kayit");
+  const isRemoveCommand = text.startsWith("/sil");
+  const isStartCommand = text.startsWith("/start");
+
+  // KRİTİK GÜVENLİK: Kayıt ve Silme sadece patrona açık
+  if ((isRegisterCommand || isRemoveCommand) && !isBoss) {
+    console.log(
+      `🚫 ENGELLENDİ: Yetkisiz kayıt/silme denemesi. UserID=${userId}, Username=@${username}`,
+    );
+    return ctx.reply(
+      "❌ Bu işlem sadece Barış Bey (Patron) tarafından gerçekleştirilebilir.",
+    );
+  }
 
   if (isBoss || isRegisteredStaff || isRegisterCommand || isStartCommand) {
     return next();

@@ -14,7 +14,7 @@ async function listRecentUids() {
     },
     logger: false,
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
     },
   });
 

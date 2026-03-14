@@ -22,7 +22,7 @@ async function fullCleanup() {
     secure: true,
     auth: { user: GMAIL_USER, pass: GMAIL_PASS },
     logger: false,
-    tls: { rejectUnauthorized: false },
+    tls: { rejectUnauthorized: true },
   });
 
   try {
