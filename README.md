@@ -34,6 +34,8 @@ Bu bölüm, projenin başından sonuna kadar geçirdiği evreleri ve teknik baş
 - **Aşama 17: Plastik Üretim Akışı & Dikişhane Görünürlüğü (Mart 2026):** "Plastik" içeren ürünlerin otomatik olarak Satınalma (Marina) departmanına Rusça ve resimli olarak yönlendirilmesi sağlandı. Dikişhane ve diğer manuel birimler için departman eşleme mantığı (`isManualDept`) güçlendirilerek tüm dil varyasyonlarında (TR/RU) tam görünürlük sağlandı.
 - **Aşama 18: Gelişmiş Resim Eşleşme & Scope Fix (Mart 2026):** Excel'den çekilen ürün görsellerinin sipariş kalemleriyle (items) eşleşmesini engelleyen scope shadowing hatası giderildi. `RowIndex` mantığı ile %100 doğru görsel-ürün eşleşmesi sağlandı. PDF başlıkları ve departman isimleri Rusça (ПРОИЗВОДСТВО КАРКАСА) için tam yerelleştirildi.
 - **Aşama 19: Git Push & Deployment Stratejisi (Mart 2026):** Tüm kritik hata düzeltmeleri ve yerelleştirme güncellemeleri GitHub'a gönderildi. Netlify (Frontend) ve Coolify (Backend/VPS) ayrımı netleştirilerek kesintisiz çalışma sağlandı.
+- **Aşama 20: Akıllı Sesli Komut & Whisper V3 (Mart 2026):** Telegram sesli mesajları için `VoiceService` tamamen yenilendi. **Whisper-large-v3** altyapısı ile otomatik dil algılama (Auto-Detect) yeteneği eklendi. `Node-fetch` kaynaklı CommonJS/ESM çakışmaları giderilerek native HTTPS indirme motoru devreye alındı.
+- **Aşama 21: IMAP Stabilizasyonu & State Management (Mart 2026):** Gmail IMAP bağlantılarında yaşanan `ready state` ve `authenticated` çakışmaları için proaktif state-check mekanizması (`connectWithRetry`) geliştirildi. Sistem artık bağlantı hatalarında kilitlenmeden e-posta takibine devam ediyor.
 
 
 ### 3. Bot Stabilitesi & Webhook Mimarisi (Mart 2026)

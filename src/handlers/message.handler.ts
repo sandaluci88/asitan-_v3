@@ -34,16 +34,14 @@ export class MessageHandler {
     } else if (ctx.message.voice) {
       await ctx.reply("🎙️ Sesli mesajınızı dinliyorum, lütfen bekleyin...");
 
-      // Kullanıcının rolüne göre dil seçimi (Boss: tr, Diğerleri: ru/tr karışık olabilir ama varsayılan tr olsun istendi)
-      const isBoss = (ctx as any).role === "boss";
-      const voiceLang = isBoss ? "tr" : "ru";
-
+      // Dil seçimi Whisper'ın otomatik algılama yeteneğine bırakıldı (auto)
       const transcribedText = await this.voiceService.transcribeVoiceMessage(
         ctx,
         ctx.message.voice.file_id,
-        voiceLang,
+        "auto",
       );
 
+      const isBoss = (ctx as any).role === "boss";
       if (!transcribedText) {
         await ctx.reply(
           isBoss

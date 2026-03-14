@@ -17,6 +17,7 @@ import {
 } from "./utils/i18n";
 import { DoctorService } from "./utils/doctor.service";
 import { logger } from "./utils/logger";
+import { CronService } from "./utils/cron.service";
 
 // --- Dinamik Ayarlar ve Yardımcılar ---
 const MANUAL_DEPARTMENTS = [
@@ -194,8 +195,10 @@ bot.command("doctor", async (ctx) => {
   );
 });
 
-// Metin Mesajı Handlerı
-bot.on("message:text", (ctx) => messageHandler.handle(ctx));
+// Mesaj Handlerı (Metin, Ses ve Döküman desteği)
+bot.on(["message:text", "message:voice", "message:document"], (ctx) =>
+  messageHandler.handle(ctx),
+);
 
 // Callback Query Handlerı
 // Callback Query Handlerı (Merkezi Mantık - index.ts)
@@ -1019,6 +1022,18 @@ if (botEnabled) {
   });
   server.listen(httpPort, "0.0.0.0", () => {
     console.log(`📡 Health check server on port ${httpPort}`);
-    bot.start().catch((e) => console.error("Bot start error:", e));
+
+    // Cron servisini başlat (Sabah brifingi, hatırlatıcılar vb.)
+    try {
+      const cronService = CronService.getInstance(bot, supervisorId);
+      cronService.init();
+      console.log("⏰ Cron Service initialized and started.");
+    } catch (cronErr) {
+      console.error("❌ Cron Service start error:", cronErr);
+    }
+
+  // Botu başlat
+console.log("🚀 AYÇA BOT BAŞLATILIYOR... (Terminal Kontrol)");
+bot.start().catch((e) => console.error("Bot start error:", e));
   });
 }

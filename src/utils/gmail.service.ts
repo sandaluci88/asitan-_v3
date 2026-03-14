@@ -90,14 +90,32 @@ export class GmailService {
     retries: number = 3,
   ): Promise<void> {
     for (let i = 0; i < retries; i++) {
+       // Check if already authenticated
+      if (client.authenticated) {
+        logger.info("📡 IMAP: Client already authenticated, skipping connect.");
+        return;
+      }
       try {
         await client.connect();
+        logger.info("📡 IMAP: Connected successfully.");
         return;
-      } catch (err) {
-        if (i === retries - 1) throw err;
+      } catch (err: any) {
+        const errorMsg = err.message || "";
+        
+        // If the error says we are already connected (ready state), we are good to go
+        if (errorMsg.includes("ready state")) {
+          logger.info("📡 IMAP: Client was already in ready state. Continuing...");
+          return;
+        }
+
+        if (i === retries - 1) {
+          logger.error({ err }, "❌ IMAP: Max retries reached for connection.");
+          throw err;
+        }
+
         const delay = Math.pow(2, i) * 1000;
         logger.warn(
-          `⚠️ IMAP bağlantı hatası, ${delay}ms sonra tekrar deneniyor... (${i + 1}/${retries})`,
+          `⚠️ IMAP bağlantı hatası (${errorMsg}), ${delay}ms sonra tekrar deneniyor... (${i + 1}/${retries})`,
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
