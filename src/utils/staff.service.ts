@@ -224,6 +224,7 @@ export class StaffService {
       "Dikişhane",
       "Döşemehane",
       "Boyahane",
+      "Satınalma",
       "Kalite Kontrol",
       "Paketleme",
       "Sevkiyat",

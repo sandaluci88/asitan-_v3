@@ -65,4 +65,4 @@ async function resetMailFlags(uid: string) {
   }
 }
 
-resetMailFlags("69");
+resetMailFlags("86");

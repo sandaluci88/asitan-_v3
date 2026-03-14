@@ -83,6 +83,28 @@ export class GmailService {
   }
 
   /**
+   * Gmail bağlantısını retry mekanizması ile gerçekleştirir.
+   */
+  private async connectWithRetry(
+    client: ImapFlow,
+    retries: number = 3,
+  ): Promise<void> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await client.connect();
+        return;
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        const delay = Math.pow(2, i) * 1000;
+        logger.warn(
+          `⚠️ IMAP bağlantı hatası, ${delay}ms sonra tekrar deneniyor... (${i + 1}/${retries})`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  /**
    * Okunmamış son mesajları getirir ve işler, ardından okundu olarak işaretler.
    */
   async processUnreadMessages(
@@ -104,18 +126,21 @@ export class GmailService {
     });
 
     try {
-      await client.connect();
+      await this.connectWithRetry(client);
       const lock = await client.getMailboxLock("INBOX");
 
       try {
         logger.info("📡 IMAP: INBOX aranıyor (seen: false)...");
-        const searchResult = await client.search({}, { uid: true });
+        const searchResult = await client.search(
+          { seen: false },
+          { uid: true },
+        );
         logger.info({ searchResult }, `🔍 IMAP Arama Sonucu`);
         const count = Array.isArray(searchResult) ? searchResult.length : 0;
         logger.info(`🔍 IMAP: ${count} adet okunmamış mesaj bulundu.`);
 
         if (Array.isArray(searchResult) && searchResult.length > 0) {
-          const lastIds = searchResult.slice(-limit).reverse();
+          const lastIds = searchResult.slice(-limit); // .reverse() removed to process in chronological order (oldest first)
 
           for (const uid of lastIds) {
             logger.info(`📧 Mesaj UID ${uid} getiriliyor...`);
@@ -210,7 +235,7 @@ export class GmailService {
     });
 
     try {
-      await client.connect();
+      await this.connectWithRetry(client);
       const lock = await client.getMailboxLock("INBOX");
 
       try {

@@ -394,7 +394,7 @@ export class CronService {
    */
   async checkProductionStatus() {
     try {
-      const itemsToCheck = this.orderService.getItemsNeedingFollowUp(20);
+      const itemsToCheck = this.orderService.getItemsNeedingFollowUp();
       if (itemsToCheck.length === 0) return;
 
       console.log(
@@ -452,8 +452,8 @@ export class CronService {
         );
       }
 
-      // Siparişleri kaydet (lastReminderAt güncellendi)
-      this.orderService.getOrders(); // trigger save indirectly
+      // Değişiklikler repository üzerinden yapıldığı için kaydetme işlemi otomatik (Dosya fallback açıksa)
+      // Siparişleri repository.save() ile kaydetmeye gerek yok çünkü updateOrderItem zaten kaydediyor.
 
       // Marina'ya özet gönder
       if (summaryLines.length > 0) {

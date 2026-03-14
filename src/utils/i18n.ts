@@ -194,6 +194,10 @@ const translations: Record<string, Record<Language, string>> = {
     tr: "Boyahane",
     ru: "Покрасочный цех",
   },
+  dept_purchasing: {
+    tr: "Satınalma",
+    ru: "Закупки",
+  },
 
   followup_summary_marina: {
     tr: "📊 *Takip Özeti*\n\n{summary}",
@@ -365,4 +369,26 @@ export function t(
  */
 export function getUserLanguage(role: string): Language {
   return role === "boss" ? "tr" : "ru";
+}
+/**
+ * Departman isimlerini yerelleştiren yardımcı fonksiyon
+ */
+export function translateDepartment(
+  deptName: string,
+  lang: Language = "ru",
+): string {
+  const normalized = deptName.toLowerCase();
+
+  if (normalized.includes("karkas")) return t("dept_karkas", lang);
+  if (normalized.includes("metal")) return t("dept_metal", lang);
+  if (normalized.includes("mobilya") || normalized.includes("dekorasyon"))
+    return t("dept_mobilya", lang);
+  if (normalized.includes("dikiş")) return t("dept_sewing", lang);
+  if (normalized.includes("döşeme")) return t("dept_upholstery", lang);
+  if (normalized.includes("boya")) return t("dept_paint", lang);
+  if (normalized.includes("satın") || normalized.includes("procurement"))
+    return t("dept_purchasing", lang);
+  if (normalized === "kumaş") return t("dept_fabric", lang);
+
+  return deptName; // Eşleşme yoksa olduğu gibi dön
 }

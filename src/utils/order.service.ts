@@ -1,67 +1,28 @@
 import * as fs from "fs";
 import * as path from "path";
-const PDFDocument = require("pdfkit");
-const { createCanvas } = require("canvas");
-const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
-import { pathToFileURL } from "url";
 import { OpenRouterService } from "./llm.service";
 import { StaffService } from "./staff.service";
 import { ExcelRow, XlsxUtils } from "./xlsx-utils";
 import { ImageEmbeddingService } from "./image-embedding.service";
 import { SupabaseService } from "./supabase.service";
-import { t, Language } from "./i18n";
+import { t, Language, translateDepartment } from "./i18n";
 import { pino } from "pino";
+import { OrderRepository } from "../repositories/order.repository";
+import { PDFService } from "../services/pdf.service";
+import { OrderDetail, OrderItem } from "../models/order.schema";
 
 const logger = pino();
 
-export interface OrderItem {
-  id: string; // OrderID_Index formatında
-  product: string;
-  department: string;
-  quantity: number;
-  details: string;
-  source: "Stock" | "Production" | "External";
-  imageUrl?: string;
-  rowIndex?: number;
-  imageBuffer?: Buffer;
-  imageExtension?: string;
-  status:
-    | "bekliyor"
-    | "uretimde"
-    | "boyada"
-    | "dikiste"
-    | "dosemede"
-    | "hazir"
-    | "sevk_edildi"
-    | "arsivlendi";
-  assignedWorker?: string;
-  distributedAt?: string; // İş emri dağıtım tarihi (takip zamanlayıcı için)
-  fabricDetails?: {
-    name: string;
-    amount: number;
-    arrived: boolean;
-    issueNote?: string;
-  };
-  lastReminderAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface OrderDetail {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  items: OrderItem[];
-  deliveryDate: string;
-  status: "new" | "processing" | "completed" | "archived";
-  isDuplicate?: boolean; // Mükerrer sipariş kontrolü için
-  createdAt: string;
-  updatedAt: string;
-}
+// Re-export types from central schema for backward compatibility
+export type { OrderItem, OrderDetail } from "../models/order.schema";
 
 export class OrderService {
-  private orders: OrderDetail[] = [];
-  private filePath: string;
+  private readonly repository: OrderRepository;
+  private readonly pdfService: PDFService;
+  private readonly llmService: OpenRouterService;
+  private readonly staffService: StaffService;
+  private readonly imageEmbeddingService: ImageEmbeddingService;
+  private readonly supabase: SupabaseService;
 
   /**
    * Levenshtein mesafesi hesaplayan metin benzerliği hesaplama
@@ -75,26 +36,19 @@ export class OrderService {
     const len2 = str2.length;
     const maxLen = Math.max(len1, len2);
 
-    // Boş string kontrolü
     if (maxLen === 0) return 1;
 
-    // Levenshtein mesafesi hesapla
     const matrix: number[][] = [];
-
-    for (let i = 0; i <= len1; i++) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= len2; j++) {
-      matrix[0][j] = j;
-    }
+    for (let i = 0; i <= len1; i++) matrix[i] = [i];
+    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
 
     for (let i = 1; i <= len1; i++) {
       for (let j = 1; j <= len2; j++) {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
         matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1, // Silme
-          matrix[i][j - 1] + 1, // Ekleme
-          matrix[i - 1][j - 1] + cost, // Değiştirme
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost,
         );
       }
     }
@@ -102,128 +56,25 @@ export class OrderService {
     const distance = matrix[len1][len2];
     return 1 - distance / maxLen;
   }
-  private archivePath: string;
-  private logPath: string;
-  private llmService: OpenRouterService;
-  private staffService: StaffService;
-  private imageEmbeddingService: ImageEmbeddingService;
-  private supabase: SupabaseService;
 
   constructor() {
-    this.filePath = path.join(process.cwd(), "data", "orders.json");
-    this.archivePath = path.join(process.cwd(), "data", "siparis_arsivi.json");
-    this.logPath = path.join(process.cwd(), "data", "verilen_siparisler.log");
+    this.repository = OrderRepository.getInstance();
+    this.pdfService = PDFService.getInstance();
     this.llmService = new OpenRouterService();
     this.staffService = StaffService.getInstance();
     this.imageEmbeddingService = new ImageEmbeddingService();
     this.supabase = SupabaseService.getInstance();
-    this.ensureDirectoryExists();
-    this.loadOrdersFromSupabase(); // Başlangıçta asenkron yükleme başlar
+    this.repository.loadOrders(); // Başlangıçta asenkron yükleme başlar
   }
 
-  private ensureDirectoryExists() {
-    const dir = path.dirname(this.filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  }
-
-  public async loadOrdersFromSupabase() {
-    try {
-      const data = await this.supabase.getActiveOrders();
-      if (data) {
-        this.orders = data.map((o: any) => ({
-          id: o.id,
-          orderNumber: o.order_number,
-          customerName: o.customer_name,
-          deliveryDate: o.delivery_date,
-          status: o.status,
-          createdAt: o.created_at,
-          updatedAt: o.updated_at,
-          items: (o.order_items || []).map((i: any) => ({
-            id: i.id,
-            product: i.product,
-            department: i.department,
-            quantity: i.quantity,
-            details: i.details,
-            source: i.source,
-            imageUrl: i.image_url,
-            status: i.status || "bekliyor",
-            assignedWorker: i.assigned_worker,
-            fabricDetails: {
-              name: i.fabric_name,
-              amount: i.fabric_amount,
-              arrived: i.fabric_arrived,
-              issueNote: i.fabric_issue_note,
-            },
-            lastReminderAt: i.last_reminder_at,
-            rowIndex: i.row_index,
-            createdAt: i.created_at,
-            updatedAt: i.updated_at,
-          })),
-        }));
-        this.saveToLocalFile(); // Yedekle
-      }
-    } catch (error) {
-      console.error("❌ Siparişler DB'den yüklenemedi:", error);
-      this.loadFromLocalFile();
-    }
-  }
-
-  private loadFromLocalFile() {
-    if (fs.existsSync(this.filePath)) {
-      try {
-        const data = fs.readFileSync(this.filePath, "utf-8");
-        this.orders = JSON.parse(data);
-      } catch (error) {
-        console.error("❌ Yerel sipariş dosyası okunamadı:", error);
-      }
-    }
-  }
-
-  private saveToLocalFile() {
-    try {
-      fs.writeFileSync(this.filePath, JSON.stringify(this.orders, null, 2));
-    } catch (error) {
-      console.error("❌ Sipariş verileri yerel dosyaya kaydedilemedi:", error);
-    }
-  }
-
-  // Siparişi ve tüm kalemlerini Supabase'e kaydeder
-  private async persistOrder(order: OrderDetail) {
-    try {
-      await this.supabase.upsertOrder(order);
-      for (const item of order.items) {
-        await this.supabase.upsertOrderItem(item, order.id);
-      }
-      this.saveToLocalFile(); // Yerelde de güncelle
-    } catch (error) {
-      console.error(`❌ Sipariş DB'ye kaydedilemedi (${order.id}):`, error);
-    }
+  /** @deprecated Use repository.loadOrders() instead. Kept for backward compatibility. */
+  public async loadOrdersFromSupabase(): Promise<void> {
+    await this.repository.loadOrders();
   }
 
   // Departman ismini i18n üzerinden çevirir (varsayılan: ru)
   public getDeptTranslation(dept: string, lang: Language = "ru"): string {
-    const mapping: Record<string, string> = {
-      "Karkas Üretimi": "dept_karkas",
-      "Metal Üretimi": "dept_metal",
-      "Mobilya Dekorasyon": "dept_mobilya",
-      Dikişhane: "dept_sewing",
-      Döşemehane: "dept_upholstery",
-      Boyahane: "dept_paint",
-      Kumaş: "dept_fabric",
-      Satınalma: "dept_purchasing",
-    };
-    // Tam eşleşme ara, bulamazsan küçük harfle ara
-    let key = mapping[dept];
-    if (!key) {
-      const lowerDept = (dept || "").toLowerCase().trim();
-      const foundKey = Object.keys(mapping).find(
-        (k) => k.toLowerCase() === lowerDept,
-      );
-      if (foundKey) key = mapping[foundKey];
-    }
-    return key ? t(key, lang) : dept;
+    return translateDepartment(dept, lang);
   }
 
   /**
@@ -250,12 +101,26 @@ export class OrderService {
           ) {
             try {
               // XlsxUtils kullan - resimleri de içerir
-              rawExcelData = await XlsxUtils.parseExcel(attachment.content);
+              rawExcelData = await XlsxUtils.parseExcel(
+                attachment.content,
+              );
+              if (!rawExcelData || rawExcelData.length === 0) {
+                console.warn(
+                  `⚠️ [DEBUG] Excel dosyası boş veya okunamadı: ${attachment.filename}`,
+                );
+                continue;
+              }
 
               // Tablo formatında içerik oluştur (LLM için)
               const tableContent = XlsxUtils.formatToTable(rawExcelData);
               fullContent += `\n\n--- EK DOSYA İÇERİĞİ (${attachment.filename}) ---\n${tableContent}`;
               isExcel = true;
+
+              // rawExcelData'yı kaydediyoruz (daha sonra resim eşleştirme için)
+              // parseAndCreateOrder içinde yerel bir değişken olarak tanımlanmalı veya pass edilmeli
+              // Ama burada döngü içindeyiz. Tipik olarak tek bir sipariş dosyası beklenir.
+              (this as any)._latestExcelData = rawExcelData;
+
               console.log(
                 `📊 [DEBUG] Excel eki XlsxUtils ile okundu: ${attachment.filename}, ${rawExcelData.length} satır`,
               );
@@ -289,6 +154,7 @@ export class OrderService {
       - DİĞER: "Metal Üretimi", "Mobilya Dekorasyon".
 
       🚨 KRİTİK KURALLAR:
+      0. ROW INDEX: Tablodaki "RowIndex" sütunundaki değeri mutlaka her bir "item" için "rowIndex" alanına yaz. Bu, görsellerin doğru eşleşmesi için hayati önem taşır.
       1. ÜRÜN PARÇALAMA: Her bir departman işi için AYRI kalem (item) oluştur.
       2. PLASTİK ÜRÜN KURALI: Eğer ürün türünde veya detaylarda "plastik" (sandalye, ayak vb.) geçiyorsa, bu ürünler "Satınalma" departmanına atanmalıdır.
       3. DETAYLARIN KORUNMASI: Kumaş, boya ve teknik notları ilgili TÜM kalemlerin "details" kısmına ekle.
@@ -391,7 +257,7 @@ export class OrderService {
       console.log(
         `📋 [DEBUG] Ayrıştırılan Ürünler:`,
         JSON.stringify(
-          parsed.items?.map((i: any) => ({
+          parsed.items?.map((i: OrderItem) => ({
             p: i.product,
             d: i.department,
             r: i.rowIndex,
@@ -403,7 +269,7 @@ export class OrderService {
 
       // 🚨 İÇERİK BAZLI MÜKERRER KONTROLÜ
       // Aynı müşteri + benzer ürün kombinasyonunu kontrol et
-      const allOrders = this.orders;
+      const allOrders = this.repository.getAll();
       const customerName = (parsed.customerName || "").toLowerCase().trim();
       const newProducts = (parsed.items || [])
         .map((i: any) =>
@@ -641,7 +507,7 @@ export class OrderService {
         });
       }
 
-      await this.persistOrder(order);
+      await this.repository.save(order);
 
       // Görsel hafıza - Artık ana sipariş DB'de olduğu için güvenle çalışabilir
       try {
@@ -787,277 +653,29 @@ export class OrderService {
 
     return table;
   }
+  /**
+   * Marina için sipariş özeti PDF'i - PDFService'e delege edildi.
+   */
   async generateMarinaSummaryPDF(order: OrderDetail): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 30, size: "A4" });
-      const chunks: Buffer[] = [];
-
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", (err: Error) => reject(err));
-
-      const fontRegular = path.join(
-        process.cwd(),
-        "src",
-        "assets",
-        "fonts",
-        "Roboto-Regular.ttf",
-      );
-      const fontBold = path.join(
-        process.cwd(),
-        "src",
-        "assets",
-        "fonts",
-        "Roboto-Bold.ttf",
-      );
-      const defaultFont = fs.existsSync(fontRegular)
-        ? fontRegular
-        : "Helvetica";
-      const boldFont = fs.existsSync(fontBold) ? fontBold : "Helvetica-Bold";
-
-      // --- HEADER ---
-      doc.rect(30, 30, 535, 60).fill("#1a1a1a");
-      doc
-        .font(boldFont)
-        .fontSize(18)
-        .fillColor("#ffffff")
-        .text(t("pdf_marina_header", "ru"), 30, 45, {
-          align: "center",
-          width: 535,
-        });
-      doc
-        .font(defaultFont)
-        .fontSize(10)
-        .fillColor("#cccccc")
-        .text(t("system_coordinator_title", "ru"), 30, 70, {
-          align: "center",
-          width: 535,
-        });
-
-      doc.moveDown(3);
-      let currentY = 110;
-
-      // --- CUSTOMER INFO ---
-      doc
-        .fillColor("#000")
-        .font(boldFont)
-        .fontSize(12)
-        .text(`${t("customer_label", "ru")}: `, 30, currentY, {
-          continued: true,
-        });
-      doc.font(defaultFont).text(order.customerName);
-
-      doc
-        .font(boldFont)
-        .text(`${t("order_label", "ru")}: `, 30, currentY + 15, {
-          continued: true,
-        });
-      doc.font(defaultFont).text(order.orderNumber);
-
-      doc
-        .font(boldFont)
-        .text(`${t("delivery_label", "ru")}: `, 30, currentY + 30, {
-          continued: true,
-        });
-      doc.font(defaultFont).text(order.deliveryDate);
-
-      currentY += 60;
-
-      // --- TABLE HEADER ---
-      const colImg = 35; // Resim kolonu (X başlangıcı)
-      const colX = [95, 210, 350, 440]; // Ürün, Detay, Departman, Personel
-      doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
-      doc.fillColor("#000").font(boldFont).fontSize(9);
-      doc.text("Resim/Фото", colImg, currentY + 5);
-      doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
-      doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
-      doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
-      doc.text(t("worker_label", "ru"), colX[3], currentY + 5);
-
-      currentY += 20;
-
-      // --- ROWS ---
-      order.items.forEach((item, index) => {
-        const rowHeight = 70; // Satır yüksekliğini görsel için artırdık
-        if (currentY + rowHeight > 750) {
-          doc.addPage();
-          currentY = 30;
-          // Sub-header repeated on new page
-          doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
-          doc.fillColor("#000").font(boldFont).fontSize(9);
-          doc.text("Resim/Фото", colImg, currentY + 5);
-          doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
-          doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
-          doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
-          doc.text(t("worker_label", "ru"), colX[3], currentY + 5);
-          currentY += 20;
-        }
-
-        doc.rect(30, currentY, 535, rowHeight).stroke("#eee");
-
-        // Görsel Ekleme
-        if (item.imageBuffer) {
-          try {
-            doc.image(item.imageBuffer, colImg - 2, currentY + 5, {
-              fit: [55, 60],
-            });
-          } catch (e) {
-            console.error("Görsel basılamadı:", e);
-          }
-        }
-
-        doc
-          .font(boldFont)
-          .fontSize(9)
-          .fillColor("#000")
-          .text(`${index + 1}. ${item.product}`, colX[0], currentY + 10, {
-            width: 110,
-          });
-        doc
-          .font(defaultFont)
-          .fontSize(8)
-          .text(item.details || "-", colX[1], currentY + 5, { width: 135 });
-
-        const ruDept = this.getDeptTranslation(item.department, "ru");
-        doc.text(`${ruDept}\n(${item.department})`, colX[2], currentY + 10, {
-          width: 85,
-        });
-
-        const worker =
-          item.assignedWorker || t("dist_not_assigned", "ru").toUpperCase();
-        doc
-          .font(boldFont)
-          .fillColor(item.assignedWorker ? "#1a73e8" : "#d93025")
-          .text(worker, colX[3], currentY + 15, { width: 120 });
-        doc.fillColor("#000");
-
-        currentY += rowHeight;
-      });
-
-      // --- FOOTER ---
-      doc
-        .fontSize(8)
-        .fillColor("#999")
-        .text(t("pdf_footer", "ru"), 30, 780, { align: "center", width: 535 });
-
-      doc.end();
-    });
+    return this.pdfService.generateMarinaSummaryPDF(order);
   }
 
   /**
-   * Marina için Kumaş Sipariş Raporu PDF'i oluşturur.
+   * Marina için Kumaş Sipariş Raporu PDF'i - PDFService'e delege edildi.
    */
   async generateFabricOrderPDF(order: OrderDetail): Promise<Buffer> {
-    const fabricItems = order.items.filter(
-      (i) =>
-        i.fabricDetails ||
-        (i.details && i.details.toLowerCase().includes("kumaş")),
-    );
+    return this.pdfService.generateFabricOrderPDF(order);
+  }
 
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 30, size: "A4" });
-      const chunks: Buffer[] = [];
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", (err: Error) => reject(err));
-
-      const fontRegular = path.join(
-        process.cwd(),
-        "src",
-        "assets",
-        "fonts",
-        "Roboto-Regular.ttf",
-      );
-      const fontBold = path.join(
-        process.cwd(),
-        "src",
-        "assets",
-        "fonts",
-        "Roboto-Bold.ttf",
-      );
-      const defaultFont = fs.existsSync(fontRegular)
-        ? fontRegular
-        : "Helvetica";
-      const boldFont = fs.existsSync(fontBold) ? fontBold : "Helvetica-Bold";
-
-      // HEADER
-      doc.rect(30, 30, 535, 50).fill("#5d4037"); // Brownish color for fabric
-      doc
-        .font(boldFont)
-        .fontSize(16)
-        .fillColor("#ffffff")
-        .text("KUMAŞ SİPARİŞ RAPORU / ЗАКАЗ ТКАНИ", 30, 45, {
-          align: "center",
-          width: 535,
-        });
-
-      let currentY = 100;
-      doc
-        .fillColor("#000")
-        .font(boldFont)
-        .fontSize(11)
-        .text(`${t("customer_label", "ru")}: `, 30, currentY, {
-          continued: true,
-        })
-        .font(defaultFont)
-        .text(order.customerName);
-
-      doc
-        .font(boldFont)
-        .text(`Sipariş No / № Заказа: `, 30, currentY + 15, { continued: true })
-        .font(defaultFont)
-        .text(order.orderNumber);
-
-      currentY += 50;
-
-      fabricItems.forEach((item, index) => {
-        if (currentY > 700) {
-          doc.addPage();
-          currentY = 40;
-        }
-
-        doc.rect(30, currentY, 535, 100).stroke("#ccc");
-
-        // Image
-        if (item.imageBuffer) {
-          try {
-            doc.image(item.imageBuffer, 40, currentY + 10, { fit: [80, 80] });
-          } catch (e) {}
-        }
-
-        doc
-          .fillColor("#000")
-          .font(boldFont)
-          .fontSize(10)
-          .text(`${index + 1}. ${item.product}`, 130, currentY + 15);
-
-        const fabric = item.fabricDetails;
-        if (fabric) {
-          doc
-            .font(boldFont)
-            .text(`Kumaş / Ткань: `, 130, currentY + 35, { continued: true })
-            .font(defaultFont)
-            .text(fabric.name || "-");
-          doc
-            .font(boldFont)
-            .text(`Miktar / Кол-во: `, 130, currentY + 50, { continued: true })
-            .font(defaultFont)
-            .text(`${(fabric.amount * (item.quantity || 1)).toFixed(1)} m`);
-        } else {
-          doc
-            .font(defaultFont)
-            .text(item.details || "-", 130, currentY + 35, { width: 400 });
-        }
-
-        currentY += 110;
-      });
-
-      doc
-        .fontSize(8)
-        .fillColor("#999")
-        .text(t("pdf_footer", "ru"), 30, 780, { align: "center", width: 535 });
-      doc.end();
-    });
+  /**
+   * Departman iş emri PDF'i - PDFService'e delege edildi.
+   */
+  async generateJobOrderPDF(
+    items: OrderItem[],
+    customerName: string,
+    department: string,
+  ): Promise<Buffer> {
+    return this.pdfService.generateJobOrderPDF(items, customerName, department);
   }
 
   /**
@@ -1078,79 +696,24 @@ export class OrderService {
   }
 
   /**
-   * Oluşturulan PDF iş emrini yerel klasöre arşivler. (Marina özeti dahil)
+   * PDF iş emrini yerel klasöre arşivler - PDFService'e delege edildi.
    */
   async archivePDF(deptName: string, pdfBuffer: Buffer): Promise<string> {
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    const pdfDir = path.join(process.cwd(), "data", "orders", today, "pdfs");
-
-    if (!fs.existsSync(pdfDir)) {
-      fs.mkdirSync(pdfDir, { recursive: true });
-    }
-
-    const safeName = deptName.replace(/[^a-z0-9]/gi, "_").toUpperCase();
-    const fileName = `is_emri_${safeName}_${Date.now()}.pdf`;
-    const filePath = path.join(pdfDir, fileName);
-
-    fs.writeFileSync(filePath, pdfBuffer);
-    console.log(`📂 PDF arşivlendi: ${filePath}`);
-    return filePath;
+    return this.pdfService.archivePDF(deptName, pdfBuffer);
   }
 
   /**
    * Siparişi log dosyasına kaydeder.
    */
-  private async logOrder(order: OrderDetail) {
-    const timestamp = new Date().toLocaleString("tr-TR");
-    let logEntry = `[${timestamp}] YENİ SİPARİŞ: ${order.orderNumber} - Müşteri: ${order.customerName}\n`;
-
-    order.items.forEach((item) => {
-      logEntry += `  - ${item.product} | ${item.quantity} Adet | Departman: ${item.department} | Kaynak: ${item.source}\n`;
-    });
-
-    logEntry += `------------------------------------------------------------\n`;
-
-    try {
-      fs.appendFileSync(this.logPath, logEntry);
-      console.log(`📝 Sipariş loglandı: ${order.orderNumber}`);
-    } catch (error) {
-      console.error("❌ Log yazma hatası:", error);
-    }
+  private async logOrder(order: OrderDetail): Promise<void> {
+    await this.repository.appendLog(order);
   }
 
   /**
    * Siparişi arşive taşır.
    */
   public async archiveToCompleted(orderId: string): Promise<boolean> {
-    const orderIndex = this.orders.findIndex((o) => o.id === orderId);
-    if (orderIndex === -1) return false;
-
-    const order = this.orders[orderIndex];
-    order.status = "completed";
-
-    try {
-      // Arşiv dosyasını oku/yükle
-      let archive: OrderDetail[] = [];
-      if (fs.existsSync(this.archivePath)) {
-        archive = JSON.parse(fs.readFileSync(this.archivePath, "utf-8"));
-      }
-
-      archive.push(order);
-      fs.writeFileSync(this.archivePath, JSON.stringify(archive, null, 2));
-
-      // Mevcut listeden sil
-      this.orders.splice(orderIndex, 1);
-
-      // DB'de statüyü güncelle (id bazlı)
-      await this.supabase.upsertOrder(order);
-      this.saveToLocalFile();
-
-      console.log(`✅ Sipariş arşive taşındı: ${order.orderNumber}`);
-      return true;
-    } catch (error) {
-      console.error("❌ Arşivleme hatası:", error);
-      return false;
-    }
+    return this.repository.archiveOrder(orderId);
   }
 
   /**
@@ -1253,192 +816,50 @@ export class OrderService {
    * PDF Buffer'ını görsel bir PNG Buffer'ına dönüştürür (Screenshot gibi)
    */
   async generatePDFView(pdfBuffer: Buffer): Promise<Buffer> {
-    try {
-      console.log("[OrderService] PDF Görünümü (Screenshot) oluşturuluyor...");
-
-      const uint8Array = new Uint8Array(pdfBuffer);
-
-      // Font ve Karakter eşleşmeleri için CMap ve StandardFont yollarını belirle
-      // Windows'ta pathToFileURL kullanarak düzgün file:// URL oluştur
-      const nodeModulesPath = path.join(
-        process.cwd(),
-        "node_modules",
-        "pdfjs-dist",
-      );
-      const cMapUrl =
-        pathToFileURL(path.join(nodeModulesPath, "cmaps")).href + "/";
-      const standardFontDataUrl =
-        pathToFileURL(path.join(nodeModulesPath, "standard_fonts")).href + "/";
-
-      const loadingTask = pdfjsLib.getDocument({
-        data: uint8Array,
-        useSystemFonts: true, // Sistem fontlarını kullan (Rusça karakter desteği için)
-        disableFontFace: false, // Font-face kullan (daha iyi render)
-        cMapUrl: cMapUrl,
-        cMapPacked: true,
-        standardFontDataUrl: standardFontDataUrl,
-        isEvalSupported: false, // Node.js kısıtlamaları için
-      });
-
-      const pdfDocument = await loadingTask.promise;
-
-      // İlk sayfayı al
-      const page = await pdfDocument.getPage(1);
-
-      // Okunabilirlik için scale (3.0 yüksek kalite sağlar)
-      const scale = 3.0;
-
-      // Roboto fontlarını Canvas'a kaydet (Manual yedek olarak)
-      const { registerFont } = require("canvas");
-      const regularPath = path.join(
-        process.cwd(),
-        "src",
-        "assets",
-        "fonts",
-        "Roboto-Regular.ttf",
-      );
-      const boldPath = path.join(
-        process.cwd(),
-        "src",
-        "assets",
-        "fonts",
-        "Roboto-Bold.ttf",
-      );
-
-      if (fs.existsSync(regularPath))
-        registerFont(regularPath, { family: "Roboto" });
-      if (fs.existsSync(boldPath))
-        registerFont(boldPath, { family: "Roboto", weight: "bold" });
-
-      const viewport = page.getViewport({ scale });
-
-      // Canvas oluştur
-      const canvas = createCanvas(viewport.width, viewport.height);
-      const context = canvas.getContext("2d");
-
-      // Arkaplanı beyaz yap
-      context.fillStyle = "white";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Render ayarları
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport,
-      };
-
-      await page.render(renderContext).promise;
-
-      console.log(
-        "[OrderService] PDF başarıyla resme dönüştürüldü (Scale: 3.0).",
-      );
-      return canvas.toBuffer("image/png");
-    } catch (error) {
-      console.error("[OrderService] PDF Görünümü oluşturma hatası:", error);
-      throw error;
-    }
+    return this.pdfService.generatePDFView(pdfBuffer);
   }
 
   /**
    * Belirli bir sipariş kaleminin durumunu ve işçisini günceller.
    */
   public async updateItemStatus(itemId: string, status: OrderItem["status"]) {
-    for (const order of this.orders) {
-      const item = order.items.find((i) => i.id === itemId);
-      if (item) {
-        item.status = status;
-        item.updatedAt = new Date().toISOString();
-        order.updatedAt = new Date().toISOString();
-
-        // Supabase güncelle
-        await this.supabase.upsertOrderItem(item, order.id);
-        this.saveToLocalFile();
-        return true;
-      }
-    }
-    return false;
+    return this.repository.updateOrderItem(itemId, { status });
   }
 
   /**
    * Döşeme ekibi için işçi ataması yapar.
    */
   public async assignWorkerToItem(itemId: string, workerName: string) {
-    for (const order of this.orders) {
-      const item = order.items.find((i) => i.id === itemId);
-      if (item) {
-        item.assignedWorker = workerName;
-        item.status = "uretimde";
-        item.distributedAt = new Date().toISOString();
-        item.updatedAt = new Date().toISOString();
-        order.updatedAt = new Date().toISOString();
-
-        // Supabase güncelle
-        await this.supabase.upsertOrderItem(item, order.id);
-        this.saveToLocalFile();
-        return true;
-      }
-    }
-    return false;
+    return this.repository.updateOrderItem(itemId, {
+      assignedWorker: workerName,
+      status: "uretimde",
+      distributedAt: new Date().toISOString(),
+    });
   }
 
   /**
    * Kumaş durumunu günceller ve not ekler.
    */
   public async updateFabricStatus(
-    orderId: string,
     itemId: string,
     arrived: boolean,
     note?: string,
   ): Promise<boolean> {
-    const order = this.orders.find((o) => o.id === orderId);
-    if (!order) return false;
-
-    const item = order.items.find((i) => i.id === itemId);
-    if (!item) return false;
-
-    if (!item.fabricDetails) {
-      item.fabricDetails = { name: "Bilinmiyor", amount: 0, arrived: false };
-    }
-
-    item.fabricDetails.arrived = arrived;
-    if (note) item.fabricDetails.issueNote = note;
-    item.updatedAt = new Date().toISOString();
-    order.updatedAt = new Date().toISOString();
-
-    if (arrived) {
-      item.lastReminderAt = undefined; // Hatırlatmayı durdur
-      item.status = "bekliyor";
-    }
-
-    // Supabase güncelle
-    await this.supabase.upsertOrderItem(item, order.id);
-    this.saveToLocalFile();
-    return true;
+    return this.repository.updateFabricStatus(itemId, arrived, note);
   }
 
   public getOrders() {
-    return this.orders;
+    return this.repository.getAll();
   }
 
   public getOrderItemById(
     itemId: string,
   ): { order: OrderDetail; item: OrderItem } | null {
-    for (const order of this.orders) {
-      const item = order.items.find((i) => i.id === itemId);
-      if (item) return { order, item };
-    }
-    return null;
+    return this.repository.getOrderItemById(itemId);
   }
 
   public getActiveTrackingItems(): { order: OrderDetail; item: OrderItem }[] {
-    const activeItems: { order: OrderDetail; item: OrderItem }[] = [];
-    this.orders.forEach((order) => {
-      order.items.forEach((item) => {
-        if (!["hazir", "sevk_edildi", "arsivlendi"].includes(item.status)) {
-          activeItems.push({ order, item });
-        }
-      });
-    });
-    return activeItems;
+    return this.repository.getActiveTrackingItems();
   }
 
   /**
@@ -1446,52 +867,15 @@ export class OrderService {
    * "uretimde" statüsünde ve distributedAt'ten beri belirli gün geçmiş olanlar.
    * Ahşap/Metal/Dekorasyon → 20 gün, Dikişhane/Döşemehane → 15 gün
    */
-  public getItemsNeedingFollowUp(
-    daysAfter: number = 20,
-  ): { order: OrderDetail; item: OrderItem }[] {
-    const deptTimelines: Record<string, number> = {
-      ahşap: 20,
-      "metal üretimi": 20,
-      "mobilya dekorasyon": 20,
-      "karkas üretimi": 20,
-      dikişhane: 15,
-      döşemehane: 15,
-    };
-    const now = new Date();
-    const results: { order: OrderDetail; item: OrderItem }[] = [];
-
-    this.orders.forEach((order) => {
-      order.items.forEach((item) => {
-        if (
-          item.status === "uretimde" &&
-          item.distributedAt &&
-          item.assignedWorker
-        ) {
-          // Departmana göre takip süresini belirle
-          const deptKey = Object.keys(deptTimelines).find((d) =>
-            item.department.toLowerCase().includes(d),
-          );
-          if (!deptKey) return;
-
-          const requiredDays = deptTimelines[deptKey];
-          const dist = new Date(item.distributedAt);
-          const daysPassed = Math.floor(
-            (now.getTime() - dist.getTime()) / (1000 * 60 * 60 * 24),
-          );
-          if (daysPassed >= requiredDays) {
-            results.push({ order, item });
-          }
-        }
-      });
-    });
-    return results;
+  public getItemsNeedingFollowUp(): { order: OrderDetail; item: OrderItem }[] {
+    return this.repository.getItemsNeedingFollowUp();
   }
 
   /**
    * Siparişteki diğer kalemlerden birinin "Boyahane" departmanında olup olmadığını kontrol eder.
    */
   public orderNeedsPaint(orderId: string): boolean {
-    const order = this.orders.find((o) => o.id === orderId);
+    const order = this.repository.findById(orderId);
     if (!order) return false;
     return order.items.some(
       (item) =>
@@ -1504,10 +888,10 @@ export class OrderService {
    * Siparişin boya kalemlerini bulur.
    */
   public getPaintItemsForOrder(orderId: string): OrderItem[] {
-    const order = this.orders.find((o) => o.id === orderId);
+    const order = this.repository.findById(orderId);
     if (!order) return [];
     return order.items.filter(
-      (item) =>
+      (item: OrderItem) =>
         item.department.toLowerCase().includes("boya") &&
         item.status === "bekliyor",
     );
@@ -1516,7 +900,8 @@ export class OrderService {
   public getOrderItemByShortId(
     shortId: string,
   ): { order: OrderDetail; item: OrderItem } | null {
-    for (const order of this.orders) {
+    const allOrders = this.repository.getAll();
+    for (const order of allOrders) {
       const item = order.items.find((i) => i.id.startsWith(shortId));
       if (item) {
         return { order, item };
@@ -1529,151 +914,6 @@ export class OrderService {
    * Departman için detaylı iş emri PDF'i oluşturur.
    * Görselleri ve ürün detaylarını içerir. Dil: RU
    */
-  async generateJobOrderPDF(
-    items: OrderItem[],
-    customerName: string,
-    department: string,
-  ): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({ margin: 30, size: "A4" });
-        const chunks: Buffer[] = [];
-
-        doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-        doc.on("end", () => resolve(Buffer.concat(chunks)));
-        doc.on("error", (err: Error) => reject(err));
-
-        const fontRegular = path.join(
-          process.cwd(),
-          "src",
-          "assets",
-          "fonts",
-          "Roboto-Regular.ttf",
-        );
-        const fontBold = path.join(
-          process.cwd(),
-          "src",
-          "assets",
-          "fonts",
-          "Roboto-Bold.ttf",
-        );
-        const defaultFont = fs.existsSync(fontRegular)
-          ? fontRegular
-          : "Helvetica";
-        const boldFont = fs.existsSync(fontBold) ? fontBold : "Helvetica-Bold";
-
-        // --- HEADER ---
-        doc.rect(30, 30, 535, 50).fill("#1a1a1a");
-        const ruDept = this.getDeptTranslation(department, "ru");
-        doc
-          .font(boldFont)
-          .fontSize(16)
-          .fillColor("#ffffff")
-          .text(
-            `${ruDept.toUpperCase()} / ${department.toUpperCase()}`,
-            30,
-            45,
-            {
-              align: "center",
-              width: 535,
-            },
-          );
-
-        doc.moveDown(2);
-        let currentY = 100;
-
-        // --- CUSTOMER INFO ---
-        doc
-          .fillColor("#000")
-          .font(boldFont)
-          .fontSize(12)
-          .text(`${t("customer_label", "ru")}: `, 30, currentY, {
-            continued: true,
-          });
-        doc.font(defaultFont).text(customerName);
-
-        doc.font(boldFont).text(`${t("pdf_date", "ru")}: `, 30, currentY + 15, {
-          continued: true,
-        });
-        doc.font(defaultFont).text(new Date().toLocaleDateString("tr-TR"));
-
-        currentY += 45;
-
-        // --- ITEMS ---
-        items.forEach((item, index) => {
-          if (currentY > 600) {
-            doc.addPage();
-            currentY = 40;
-          }
-
-          // Item Box
-          doc.rect(30, currentY, 535, 150).stroke("#cccccc");
-
-          // Image if exists
-          if (item.imageBuffer) {
-            try {
-              doc.image(item.imageBuffer, 40, currentY + 15, {
-                fit: [120, 120],
-                align: "center",
-                valign: "center",
-              });
-            } catch (e) {
-              doc
-                .fontSize(8)
-                .fillColor("#999")
-                .text(t("pdf_no_image_error", "ru"), 40, currentY + 60);
-            }
-          } else {
-            doc.rect(40, currentY + 15, 120, 120).stroke("#eee");
-            doc
-              .fontSize(8)
-              .fillColor("#999")
-              .text(t("pdf_no_image", "ru"), 65, currentY + 65);
-          }
-
-          // Details
-          doc.fillColor("#000").font(boldFont).fontSize(11);
-          doc.text(`${index + 1}. ${item.product}`, 180, currentY + 20);
-
-          doc.font(boldFont).fontSize(10);
-          doc.text(`${t("order_label", "ru")}:`, 180, currentY + 45, {
-            continued: true,
-          });
-          doc.font(defaultFont).text(` ${item.quantity}`);
-
-          doc
-            .font(boldFont)
-            .text(`${t("details_label", "ru")}:`, 180, currentY + 65);
-          doc
-            .font(defaultFont)
-            .fontSize(9)
-            .text(item.details || "-", 180, currentY + 80, { width: 360 });
-
-          if (item.assignedWorker) {
-            doc
-              .font(boldFont)
-              .text(`${t("worker_label", "ru")}:`, 180, currentY + 120, {
-                continued: true,
-              });
-            doc.font(defaultFont).text(` ${item.assignedWorker}`);
-          }
-
-          currentY += 165;
-        });
-
-        // --- FOOTER ---
-        doc.fontSize(7).fillColor("#aaa").text(t("pdf_footer", "ru"), 30, 790, {
-          align: "center",
-          width: 535,
-        });
-
-        doc.end();
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
   /**
    * 24 saat geçmiş ve hala gelmemiş kumaşları bulur.
    */
@@ -1683,8 +923,9 @@ export class OrderService {
   }[] {
     const now = new Date();
     const reminders: { order: OrderDetail; item: OrderItem }[] = [];
+    const allOrders = this.repository.getAll();
 
-    this.orders.forEach((order) => {
+    allOrders.forEach((order) => {
       order.items.forEach((item) => {
         const isFabricDept =
           item.department.toLowerCase().includes("dikiş") ||
@@ -1712,13 +953,7 @@ export class OrderService {
   /**
    * Hatırlatma zamanını günceller.
    */
-  public updateLastReminder(orderId: string, itemId: string) {
-    const order = this.orders.find((o) => o.id === orderId);
-    if (!order) return;
-    const item = order.items.find((i) => i.id === itemId);
-    if (!item) return;
-
-    item.lastReminderAt = new Date().toISOString();
-    this.saveToLocalFile();
+  public async updateLastReminder(orderId: string, itemId: string) {
+    await this.repository.updateLastReminder(itemId);
   }
 }

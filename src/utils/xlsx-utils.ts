@@ -170,10 +170,10 @@ export class XlsxUtils {
   static formatToTable(data: ExcelRow[]): string {
     if (data.length === 0) return "Veri bulunamadı.";
 
-    const headers = Object.keys(data[0]).filter((h) => !h.startsWith("_"));
-    let table = headers.join(" | ") + "\n";
+    const headers = Object.keys(data[0]).filter((h) => !h.startsWith("_") || h === "_rowNumber");
+    let table = headers.map(h => h === "_rowNumber" ? "RowIndex" : h).join(" | ") + "\n";
     table += headers.map(() => "---").join(" | ") + "\n";
-
+    
     data.forEach((row) => {
       table +=
         headers

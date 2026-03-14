@@ -9,15 +9,27 @@ import { OrderService } from "./utils/order.service";
 import { StaffService } from "./utils/staff.service";
 import { XlsxUtils } from "./utils/xlsx-utils";
 import { DraftOrderService } from "./utils/draft-order.service";
-import { Language, t, getUserLanguage } from "./utils/i18n";
+import {
+  Language,
+  t,
+  getUserLanguage,
+  translateDepartment,
+} from "./utils/i18n";
 import { DoctorService } from "./utils/doctor.service";
 import { logger } from "./utils/logger";
 
 // --- Dinamik Ayarlar ve Yardımcılar ---
 const MANUAL_DEPARTMENTS = [
-  "Dikişhane", "Döşemehane", "Dikiş", "Döşeme", 
-  "Швейный цех", "Обивочный цех", "Швейный", "Обивочный",
-  "Sewing", "Upholstery"
+  "Dikişhane",
+  "Döşemehane",
+  "Dikiş",
+  "Döşeme",
+  "Швейный цех",
+  "Обивочный цех",
+  "Швейный",
+  "Обивочный",
+  "Sewing",
+  "Upholstery",
 ];
 const isManualDept = (dept: string) => {
   const d = (dept || "").toLowerCase().trim();
@@ -486,7 +498,9 @@ async function processOrderDistribution(
             targetIds = departmentalStaffIds;
           } else {
             // Hiç kimse bulunamadıysa Marina'ya gönder
-            console.log(`⚠️ ${currentDept} için personel yok, Marina'ya gönderiliyor.`);
+            console.log(
+              `⚠️ ${currentDept} için personel yok, Marina'ya gönderiliyor.`,
+            );
             targetIds = [parseInt(marinaId)];
           }
         }
@@ -497,7 +511,10 @@ async function processOrderDistribution(
 
         const staff = staffService.getStaffByTelegramId(targetId);
         // Marina'ya giden Satınalma (Plastik) iş emirleri mutlaka RU olmalı
-        const lang = currentDept.toLowerCase() === "satınalma" ? "ru" : (staff?.language || "ru");
+        const lang =
+          currentDept.toLowerCase() === "satınalma"
+            ? "ru"
+            : staff?.language || "ru";
 
         // Sadece PDF dokümanını gönder (görsel önizlemeye ve detaylı metne gerek yok)
 
@@ -506,7 +523,7 @@ async function processOrderDistribution(
             targetId,
             new InputFile(pdfBuffer, pdfFileName),
             {
-              caption: `📄 <b>${currentDept}</b> - ${lang === "ru" ? "Заказ на производство" : "İş Emri Dosyası"} (PDF)`,
+              caption: `📄 <b>${translateDepartment(currentDept, lang)}</b> - ${lang === "ru" ? "Заказ на производство" : "İş Emri Dosyası"} (PDF)`,
               parse_mode: "HTML",
             },
           );
