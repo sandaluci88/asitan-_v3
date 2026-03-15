@@ -168,7 +168,7 @@ export async function parseOrderExcel(
       items.push(makeItem(
         orderId, itemIndex++, rowNum,
         urunAdi, kod, "Satınalma", miktar, olcu,
-        `Dış alım (plastik). ${not || stokNot}`.trim(),
+        `Внешняя закупка (пластик). ${not || stokNot}`.trim(),
         undefined, undefined,
         imgData?.buffer, imgData?.extension,
       ));
@@ -185,10 +185,10 @@ export async function parseOrderExcel(
 
     if (karkasFlag) {
       const detay = [
-        boya ? `Boya: ${boya}` : "",
+        boya ? `Цвет: ${boya}` : "",
         stokNot || "",
         not || "",
-        olcu ? `Ölçü: ${olcu}` : "",
+        olcu ? `Размер: ${olcu}` : "",
       ].filter(Boolean).join(" | ");
 
       items.push(makeItem(
@@ -207,7 +207,7 @@ export async function parseOrderExcel(
       items.push(makeItem(
         orderId, itemIndex++, rowNum,
         urunAdi, kod, "Boyahane", miktar, olcu,
-        `Boya: ${boya}`,
+        `Цвет: ${boya}`,
         undefined,
         { name: boya },
         imgData?.buffer, imgData?.extension,
@@ -221,7 +221,7 @@ export async function parseOrderExcel(
       items.push(makeItem(
         orderId, itemIndex++, rowNum,
         urunAdi, kod, "Kumaş", miktar, olcu,
-        `Kumaş: ${kumas}${kumasMiktar > 0 ? ` | Toplam: ${kumasMiktar} mt` : ""}`,
+        `Ткань: ${kumas}${kumasMiktar > 0 ? ` | Итого: ${kumasMiktar} м` : ""}`,
         { name: kumas, amount: kumasMiktar },
         undefined,
         imgData?.buffer, imgData?.extension,
@@ -234,7 +234,7 @@ export async function parseOrderExcel(
       items.push(makeItem(
         orderId, itemIndex++, rowNum,
         urunAdi, kod, "Dikişhane", miktar, olcu,
-        `Dikiş: ${dikis}${ip ? ` | İp: ${ip}` : ""}`,
+        `Шитьё: ${dikis}${ip ? ` | Нить: ${ip}` : ""}`,
         kumas && !isEmpty(kumas) ? { name: kumas, amount: kumasMt * miktar } : undefined,
         undefined,
         imgData?.buffer, imgData?.extension,
@@ -243,11 +243,11 @@ export async function parseOrderExcel(
     }
 
     // ── Döşemehane ────────────────────────────────────────────────
-    if (!isEmpty(doseme) && doseme.toLowerCase().includes("yapılacak")) {
+    if (!isEmpty(doseme)) {
       items.push(makeItem(
         orderId, itemIndex++, rowNum,
         urunAdi, kod, "Döşemehane", miktar, olcu,
-        `Döşeme: ${doseme}${kumas && !isEmpty(kumas) ? ` | Kumaş: ${kumas}` : ""}`,
+        `Обивка: ${doseme}${kumas && !isEmpty(kumas) ? ` | Ткань: ${kumas}` : ""}`,
         kumas && !isEmpty(kumas) ? { name: kumas, amount: kumasMt * miktar } : undefined,
         undefined,
         imgData?.buffer, imgData?.extension,
@@ -256,8 +256,7 @@ export async function parseOrderExcel(
     }
 
     // ── Hiçbir kural tetiklenmediyse genel departmana at ─────────
-    if (!karkasFlag && isEmpty(boya) && isEmpty(kumas) && isEmpty(dikis) &&
-        (isEmpty(doseme) || !doseme.toLowerCase().includes("yapılacak"))) {
+    if (!karkasFlag && isEmpty(boya) && isEmpty(kumas) && isEmpty(dikis) && isEmpty(doseme)) {
       const dept = departmanHam || "Karkas Üretimi";
       items.push(makeItem(
         orderId, itemIndex++, rowNum,
@@ -315,7 +314,7 @@ function makeItem(
     product: urunAdi + (kod ? ` (${kod})` : ""),
     department,
     quantity,
-    details: [details, olcu ? `Ölçü: ${olcu}` : ""].filter(Boolean).join(" | "),
+    details: [details, olcu ? `Размер: ${olcu}` : ""].filter(Boolean).join(" | "),
     source: department === "Satınalma" ? "External" : "Production",
     status: "bekliyor",
     rowIndex,

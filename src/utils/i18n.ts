@@ -239,7 +239,7 @@ const translations: Record<string, Record<Language, string>> = {
   },
   pdf_header: {
     tr: "ÜRETİM İŞ EMRİ / ЗАКАЗ НА ПРОИЗВОДСТВО",
-    ru: "ЗАКАЗ НА ПРОИЗВОДСТВО / ÜRETİM İŞ EMRİ",
+    ru: "ЗАКАЗ НА ПРОИЗВОДСТВО",
   },
   pdf_footer: {
     tr: "Sandaluci Akıllı Üretim Koordinasyon Sistemi tarafından oluşturulmuştur.",
@@ -251,27 +251,27 @@ const translations: Record<string, Record<Language, string>> = {
   },
   pdf_customer: {
     tr: "MÜŞTERİ / КЛИЕНТ",
-    ru: "КЛИЕНТ / MÜŞTERİ",
+    ru: "КЛИЕНТ",
   },
   pdf_date: {
     tr: "TARİH / ДАТА",
-    ru: "ДАТА / TARİH",
+    ru: "ДАТА",
   },
   pdf_table_photo: {
     tr: "FOTO / ФОТО",
-    ru: "ФОТО / FOTO",
+    ru: "ФОТО",
   },
   pdf_table_product: {
     tr: "ÜRÜN / ПРОДУКТ",
-    ru: "ПРОДУКТ / ÜRÜN",
+    ru: "ИЗДЕЛИЕ",
   },
   pdf_table_quantity: {
     tr: "ADET / КОЛ-ВО",
-    ru: "КОЛ-ВО / ADET",
+    ru: "КОЛ-ВО",
   },
   pdf_table_details: {
     tr: "DETAYLAR / ДЕТАЛИ",
-    ru: "ДЕТАЛИ / DETAYLAR",
+    ru: "ДЕТАЛИ",
   },
   dist_not_assigned: {
     tr: "⌛ Atama Bekliyor",
@@ -323,11 +323,11 @@ const translations: Record<string, Record<Language, string>> = {
   },
   pdf_marina_header: {
     tr: "SİPARİŞ ÖZET RAPORU / СВОДНЫЙ ОТЧЕТ ПО ЗАКАЗУ",
-    ru: "СВОДНЫЙ ОТЧЕТ ПО ЗАКАЗУ / SİPARİŞ ÖZET RAPORU",
+    ru: "СВОДНЫЙ ОТЧЕТ ПО ЗАКАЗУ",
   },
   system_coordinator_title: {
     tr: "SİSTEM KOORDİNATÖRÜ / КООРДИНАТОР СИСТЕМЫ",
-    ru: "КООРДИНАТОР СИСТЕМЫ / SİSTEM KOORDİNATÖRÜ",
+    ru: "КООРДИНАТОР СИСТЕМЫ",
   },
   dept_fabric: {
     tr: "Kumaş",

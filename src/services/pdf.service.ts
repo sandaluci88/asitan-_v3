@@ -151,7 +151,7 @@ export class PDFService {
       const colX = [95, 210, 350, 440];
       doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
       doc.fillColor("#000").font(this.boldFont).fontSize(9);
-      doc.text("Resim/Фото", colImg, currentY + 5);
+      doc.text("Фото", colImg, currentY + 5);
       doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
       doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
       doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
@@ -169,7 +169,7 @@ export class PDFService {
             currentY = 30;
             doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
             doc.fillColor("#000").font(this.boldFont).fontSize(9);
-            doc.text("Resim/Фото", colImg, currentY + 5);
+            doc.text("Фото", colImg, currentY + 5);
             doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
             doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
             doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
@@ -260,7 +260,7 @@ export class PDFService {
         .font(this.boldFont)
         .fontSize(16)
         .fillColor("#ffffff")
-        .text("KUMAŞ SİPARİŞ RAPORU / ЗАКАЗ ТКАНИ", 30, 45, {
+        .text("ЗАКАЗ ТКАНИ", 30, 45, {
           align: "center",
           width: 535,
         });
@@ -278,7 +278,7 @@ export class PDFService {
 
       doc
         .font(this.boldFont)
-        .text(`Sipariş No / № Заказа: `, 30, currentY + 15, {
+        .text(`№ Заказа: `, 30, currentY + 15, {
           continued: true,
         })
         .font(this.defaultFont)
@@ -315,12 +315,12 @@ export class PDFService {
           if (fabric) {
             doc
               .font(this.boldFont)
-              .text(`Kumaş / Ткань: `, 130, currentY + 35, { continued: true })
+              .text(`Ткань: `, 130, currentY + 35, { continued: true })
               .font(this.defaultFont)
               .text(fabric.name || "-");
             doc
               .font(this.boldFont)
-              .text(`Miktar / Кол-во: `, 130, currentY + 50, {
+              .text(`Количество: `, 130, currentY + 50, {
                 continued: true,
               })
               .font(this.defaultFont)

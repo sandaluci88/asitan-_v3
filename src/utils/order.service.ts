@@ -700,8 +700,8 @@ export class OrderService {
 
       table += `<b>${index + 1}.</b> ${product}\n`;
       table += `   👉 <i>${dept}</i>\n`;
-      table += `   👷 <b>Personel:</b> ${worker}\n`;
-      if (details) table += `   📝 <b>Not:</b> ${details}\n`;
+      table += `   👷 <b>Персонал:</b> ${worker}\n`;
+      if (details) table += `   📝 <b>Примечание:</b> ${details}\n`;
       table += `┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n`;
     });
 
@@ -799,8 +799,8 @@ export class OrderService {
     items.forEach((item, idx) => {
       view += `${idx + 1}. *${labelProduct}: ${OrderService.escapeMarkdown(item.product)}*\n`;
       view += `   🔢 ${labelQuantity}: ${item.quantity}\n`;
-      view += `   📝 ${labelDetails}: ${OrderService.escapeMarkdown(item.details || "Нет / Yok")}\n`;
-      view += `   📍 Kaynak: ${item.source === "Stock" ? "Stok / Склад" : item.source === "Production" ? "Üretim / Производство" : "Dış Alım / Закупка"}\n\n`;
+      view += `   📝 ${labelDetails}: ${OrderService.escapeMarkdown(item.details || "Нет")}\n`;
+      view += `   📍 Источник: ${item.source === "Stock" ? "Склад" : item.source === "Production" ? "Производство" : "Внешняя закупка"}\n\n`;
     });
 
     view += `━━━━━━━━━━━━━━━━━━━━\n`;
