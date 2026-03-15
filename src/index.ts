@@ -979,11 +979,11 @@ if (process.env.GMAIL_ENABLED !== "false") {
                       marinaId,
                       new InputFile(
                         fabricPdf,
-                        `Kumas_Siparisi_${order.orderNumber}.pdf`,
+                        `Zakaz_Tkani_${order.orderNumber}.pdf`,
                       ),
                       {
                         caption:
-                          "🧶 <b>KUMAŞ SİPARİŞ RAPORU / ЗАКАЗ ТКАНИ</b> (PDF)",
+                          `🧶 <b>ЗАКАЗ ТКАНИ</b>\n📌 № ${order.orderNumber} | 👤 ${order.customerName}`,
                         parse_mode: "HTML",
                       },
                     );

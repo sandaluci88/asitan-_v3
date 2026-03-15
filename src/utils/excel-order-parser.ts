@@ -168,7 +168,13 @@ export async function parseOrderExcel(
       items.push(makeItem(
         orderId, itemIndex++, rowNum,
         urunAdi, kod, "Satınalma", miktar, olcu,
-        `Внешняя закупка (пластик). ${not || stokNot}`.trim(),
+        (() => {
+          // stokNot/not içindeki alım/satın alma eşanlamlılarını filtrele
+          const ALIM_KEYWORDS = ["dış alım", "satın alma", "satınalma", "external", "закупка", "alım"];
+          const extra = (not || stokNot || "").trim();
+          const isRedundant = ALIM_KEYWORDS.some(k => extra.toLowerCase().includes(k));
+          return isRedundant || !extra ? "Внешняя закупка (пластик)." : `Внешняя закупка (пластик). ${extra}`;
+        })(),
         undefined, undefined,
         imgData?.buffer, imgData?.extension,
       ));
