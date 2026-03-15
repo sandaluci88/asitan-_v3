@@ -36,6 +36,7 @@ Bu bölüm, projenin başından sonuna kadar geçirdiği evreleri ve teknik baş
 - **Aşama 19: Git Push & Deployment Stratejisi (Mart 2026):** Tüm kritik hata düzeltmeleri ve yerelleştirme güncellemeleri GitHub'a gönderildi. Netlify (Frontend) ve Coolify (Backend/VPS) ayrımı netleştirilerek kesintisiz çalışma sağlandı.
 - **Aşama 20: Akıllı Sesli Komut & Whisper V3 (Mart 2026):** Telegram sesli mesajları için `VoiceService` tamamen yenilendi. **Whisper-large-v3** altyapısı ile otomatik dil algılama (Auto-Detect) yeteneği eklendi. `Node-fetch` kaynaklı CommonJS/ESM çakışmaları giderilerek native HTTPS indirme motoru devreye alındı.
 - **Aşama 21: IMAP Stabilizasyonu & State Management (Mart 2026):** Gmail IMAP bağlantılarında yaşanan `ready state` ve `authenticated` çakışmaları için proaktif state-check mekanizması (`connectWithRetry`) geliştirildi. Sistem artık bağlantı hatalarında kilitlenmeden e-posta takibine devam ediyor.
+- **Aşama 22: Dosya Sistemi Güvenliği & Bellek Yönetimi (Mart 2026):** `MemoryService` üzerinde yaşanan `ENOENT` (dizin bulunamadı) hataları için proaktif dizin oluşturma (`ensureDirs`) mekanizması eklendi. Uygulama URL'si `https://sanasistanv2.turklawai.com` olarak güncellendi ve sistem daha izole/güvenli bir yapıya kavuşturuldu.
 
 
 ### 3. Bot Stabilitesi & Webhook Mimarisi (Mart 2026)

@@ -27,6 +27,15 @@ export class MemoryService {
     }
   }
 
+  private async ensureDirs() {
+    try {
+      await fs.mkdir(this.memoryDir, { recursive: true });
+      await fs.mkdir(this.archiveDir, { recursive: true });
+    } catch {
+      // Ignored if already exists
+    }
+  }
+
   private getFilePath(chatId: string | number): string {
     return path.join(this.memoryDir, `${chatId}.json`);
   }
@@ -53,6 +62,7 @@ export class MemoryService {
       // If we filtered out old messages, archive them and update the current file
       if (archivedMessages.length > 0) {
         await this.archiveMessages(chatId, archivedMessages);
+        await this.ensureDirs();
         await fs.writeFile(
           filePath,
           JSON.stringify(activeMessages, null, 2),
@@ -82,6 +92,7 @@ export class MemoryService {
     });
 
     try {
+      await this.ensureDirs();
       await fs.writeFile(
         this.getFilePath(chatId),
         JSON.stringify(messages, null, 2),
@@ -103,13 +114,14 @@ export class MemoryService {
     try {
       const data = await fs.readFile(archivePath, "utf-8");
       existingArchive = JSON.parse(data);
-    } catch (error: any) {
+    } catch {
       // It's okay if archive doesn't exist yet
     }
 
     const combinedArchive = [...existingArchive, ...newArchivedMessages];
 
     try {
+      await this.ensureDirs();
       await fs.writeFile(
         archivePath,
         JSON.stringify(combinedArchive, null, 2),

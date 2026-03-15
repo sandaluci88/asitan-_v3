@@ -16,6 +16,7 @@ import {
   translateDepartment,
 } from "./utils/i18n";
 import { DoctorService } from "./utils/doctor.service";
+import { memoryService } from "./utils/memory.service";
 import { logger } from "./utils/logger";
 import { CronService } from "./utils/cron.service";
 
@@ -1032,7 +1033,12 @@ if (botEnabled) {
       console.error("❌ Cron Service start error:", cronErr);
     }
 
-  // Botu başlat
+    // Bellek servisinin dizinlerini oluştur
+    memoryService.initialize().catch((err) => {
+      console.error("❌ Memory Service initialization error:", err);
+    });
+
+    // Botu başlat
 console.log("🚀 AYÇA BOT BAŞLATILIYOR... (Terminal Kontrol)");
 bot.start().catch((e) => console.error("Bot start error:", e));
   });
