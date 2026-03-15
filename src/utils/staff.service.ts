@@ -101,6 +101,26 @@ export class StaffService {
         s.department.toLowerCase().includes(department.toLowerCase()) ||
         department.toLowerCase().includes(s.department.toLowerCase()),
     );
+
+    // 🧪 GELİŞTİRİCİ MODU: Eğer bu departmanda hiç personel yoksa ve DEV_MODE=true ise,
+    // tüm iş emirleri test için oturum sahibinin (TELEGRAM_CHAT_ID) hesabına yönlendirilir.
+    // ÜRETİMDE (DEV_MODE=false) bu fallback DEVRE DIŞIDIR.
+    const isDevMode = process.env.DEV_MODE === "true";
+    if (staff.length === 0 && isDevMode && process.env.TELEGRAM_CHAT_ID) {
+      console.log(
+        `🧪 [DEV_MODE] ${department} için personel yok → Test yönlendirmesi aktif (ChatID: ${process.env.TELEGRAM_CHAT_ID})`,
+      );
+      return [
+        {
+          telegramId: Number(process.env.TELEGRAM_CHAT_ID),
+          name: `Test Ustası (${department})`,
+          department: department,
+          role: "Personnel",
+          language: "tr",
+        },
+      ];
+    }
+
     return staff;
   }
 

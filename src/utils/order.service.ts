@@ -468,14 +468,18 @@ export class OrderService {
               console.log(
                 `🔍 [IMG] Plastik ürün için görsel eşleştirme deneniyor: ${item.product}`,
               );
-              // Floating resim varsa ve daha atanmamışsa ilkini buna ata
+              // Floating resim varsa → plastik ürüne ata ve sayacı ilerlet
               if (floatingImages && floatingImages.length > floatingIndex) {
-                item.imageBuffer = floatingImages[floatingIndex];
+                item.imageBuffer = floatingImages[floatingIndex++]; // ← ++ eklendi!
                 item.imageExtension = "png";
                 console.log(
-                  `✅ [IMG] Plastik ürün için floating görsel atandı.`,
+                  `✅ [IMG] Plastik ürün için floating görsel atandı (index: ${floatingIndex - 1}).`,
                 );
                 hasAssignedImage = true;
+              } else {
+                console.log(
+                  `⚠️ [IMG] Plastik ürün için floating görsel bulunamadı (Excel'de resim yok mu?): ${item.product}`,
+                );
               }
             }
 
