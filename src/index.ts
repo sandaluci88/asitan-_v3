@@ -42,6 +42,34 @@ const isManualDept = (dept: string) => {
   });
 };
 
+// Departman bazlı ürün dökümü — son raporda kullanılır
+function buildDistributionSummary(order: any): string {
+  const deptMap = new Map<string, { product: string; qty: number; details: string }[]>();
+  for (const item of order.items) {
+    const d = item.department as string;
+    if (!deptMap.has(d)) deptMap.set(d, []);
+    deptMap.get(d)!.push({ product: item.product, qty: item.quantity, details: item.details || "" });
+  }
+  const deptEmoji: Record<string, string> = {
+    "Karkas Üretimi": "🔩", "Boyahane": "🎨", "Kumaş": "🧶",
+    "Dikişhane": "🧵", "Döşemehane": "🪑", "Satınalma": "🛒",
+    "Metal Üretimi": "⚙️",
+  };
+  let s = `━━━━━━━━━━━━━━━━━━━━\n`;
+  for (const [dept, items] of deptMap) {
+    const emoji = deptEmoji[dept] || "📦";
+    const ruDept = translateDepartment(dept, "ru");
+    s += `${emoji} <b>${ruDept}</b> (${items.length} изд.)\n`;
+    for (const it of items) {
+      s += `   • ${it.product} — <b>${it.qty} шт.</b>`;
+      if (it.details) s += `\n     <i>${it.details}</i>`;
+      s += `\n`;
+    }
+  }
+  s += `━━━━━━━━━━━━━━━━━━━━`;
+  return s;
+}
+
 const getDeptButtonLabel = (dept: string, isAssigned: boolean = false) => {
   const action = isAssigned ? "Изменить" : "Выбрать";
   if (dept.toLowerCase().includes("dikiş")) return `🧵 Швея — ${action}`;
@@ -350,19 +378,19 @@ bot.callbackQuery(/^finalize_dist:(.+)$/, async (ctx) => {
 
   // Marina'ya durumu bildir
   const visualReport = orderService.generateVisualTable(draft.order);
-  let statusMsg = "🚀 <b>Üretim Süreci Dağıtım Raporu</b>\n\n";
-  
+  let statusMsg = "🚀 <b>Отчёт о распределении заказа</b>\n\n";
+
   if (report.success.length > 0) {
-    statusMsg += `✅ <b>Gönderilenler:</b> ${report.success.map(d => translateDepartment(d, "tr")).join(", ")}\n`;
+    statusMsg += `✅ <b>Отправлено:</b> ${report.success.map(d => translateDepartment(d, "ru")).join(", ")}\n`;
   }
   if (report.failed.length > 0) {
-    statusMsg += `❌ <b>BAŞARISIZ:</b> ${report.failed.map(d => translateDepartment(d, "tr")).join(", ")}\n`;
+    statusMsg += `❌ <b>ОШИБКА:</b> ${report.failed.map(d => translateDepartment(d, "ru")).join(", ")}\n`;
   }
   if (report.success.length === 0 && report.failed.length === 0) {
-    statusMsg += "ℹ️ Ek manuel dağıtım yapılmadı.\n";
+    statusMsg += "ℹ️ Дополнительное распределение не выполнялось.\n";
   }
 
-  statusMsg += `\n${visualReport}`;
+  statusMsg += `\n${buildDistributionSummary(draft.order)}\n\n${visualReport}`;
 
   await ctx.editMessageText(statusMsg, { parse_mode: "HTML" });
 
@@ -379,7 +407,7 @@ bot.callbackQuery(/^finalize_dist:(.+)$/, async (ctx) => {
         marinaId,
         new InputFile(summaryPdf, `Final_Rapor_${draft.order.orderNumber}.pdf`),
         {
-          caption: `✅ <b>Sipariş Dağıtımı Tamamlandı</b>\n\n📌 Sipariş No: ${draft.order.orderNumber}\n👤 Müşteri: ${draft.order.customerName}\n\n📄 <b>SİPARİŞ ÖZET RAPORU / ОТЧЕТ ПО ЗАКАЗУ</b> (PDF)`,
+          caption: `✅ <b>Распределение заказа завершено</b>\n\n📌 № Заказа: ${draft.order.orderNumber}\n👤 Клиент: ${draft.order.customerName}\n\n${buildDistributionSummary(draft.order)}\n\n📄 <b>СВОДНЫЙ ОТЧЁТ ПО ЗАКАЗУ</b> (PDF)`,
           parse_mode: "HTML",
         },
       );
@@ -850,7 +878,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
               setTimeout(async () => {
                 const autoInfo =
                   autoDepts.length > 0
-                    ? `\n\n✅ <b>Birimlere İş Emirleri Gönderildi:</b> ${autoDepts.join(", ")}`
+                    ? `\n\n✅ <b>Распределение по отделам:</b>\n${buildDistributionSummary(order)}`
                     : "";
 
                 if (hasManualDepts) {
@@ -900,7 +928,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
                   }
                 } else {
                   // Manuel birim yoksa sadece özet gönder
-                  const finalMsg = `✅ <b>Sipariş Dağıtımı Tamamlandı</b>\n\n${visualReport}${autoInfo}`;
+                  const finalMsg = `✅ <b>Распределение заказа завершено</b>\n\n${autoInfo}`;
                   console.log(
                     `🕒 [FLOW] Final özet için 40 saniye beklendi, gönderiliyor... (${order.orderNumber})`,
                   );
@@ -915,7 +943,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
                         `Siparis_Ozeti_${order.orderNumber}.pdf`,
                       ),
                       {
-                        caption: `${finalMsg}\n\n📄 <b>SİPARİŞ ÖZET RAPORU / ОТЧЕТ ПО ЗАКАЗУ</b> (PDF)`,
+                        caption: `${finalMsg}\n\n📄 <b>СВОДНЫЙ ОТЧЁТ ПО ЗАКАЗУ</b> (PDF)`,
                         parse_mode: "HTML",
                       },
                     );
@@ -1039,7 +1067,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
             setTimeout(async () => {
               const autoInfo =
                 autoDepts.length > 0
-                  ? `\n\n✅ <b>Birimlere İş Emirleri Gönderildi:</b> ${autoDepts.join(", ")}`
+                  ? `\n\n✅ <b>Распределение по отделам:</b>\n${buildDistributionSummary(order)}`
                   : "";
               const reportCaption = `📝 <b>Sipariş Raporu</b>\n\n${visualReport}${autoInfo}`;
               console.log(
