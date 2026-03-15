@@ -118,7 +118,6 @@ export class MessageHandler {
       doc.mime_type === "application/vnd.ms-excel";
 
     if (!isExcel) {
-      // Excel değilse normal mesaj gibi mi davranmalı? Şimdilik sadece Excel'e odaklanıyoruz.
       return;
     }
 
@@ -128,12 +127,10 @@ export class MessageHandler {
       const file = await ctx.getFile();
       const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
 
-      // Dosyayı indir
       const response = await fetch(fileUrl);
       if (!response.ok) throw new Error("Dosya indirilemedi");
       const buffer = Buffer.from(await response.arrayBuffer());
 
-      // Excel'i parse et
       const { XlsxUtils } = await import("../utils/xlsx-utils");
       const rows = await XlsxUtils.parseExcel(buffer);
 
@@ -142,53 +139,81 @@ export class MessageHandler {
         return;
       }
 
-      const jsonContent = JSON.stringify(rows);
+      // FIX: attachment olarak geçir — resimler ve isExcel flag'i doğru çalışsın
+      const attachment = {
+        filename: fileName,
+        content: buffer,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      };
+
+      // FIX: subject=fileName, content="", attachments=[attachment]
+      // parseAndCreateOrder içinde attachment'tan Excel okunacak, resimler işlenecek
       const order = await this.orderService.parseAndCreateOrder(
-        jsonContent,
         fileName,
+        "",
         "tg_upload",
-        [],
+        [attachment],
       );
 
-      if (order) {
-        // Taslağı DraftOrderService'e kaydet
-        const summary = this.orderService.generateVisualTable(order);
-        const { DraftOrderService } =
-          await import("../utils/draft-order.service");
-        const draftOrderService = DraftOrderService.getInstance();
-        const draftId = `tg_${Date.now()}`;
-
-        // DraftOrderService beklediği formatta veriyi hazırlayalım
-        const floatingImages = (rows as any).floatingImages || [];
-
-        draftOrderService.saveDraft(draftId, {
-          order: order,
-          images: floatingImages,
-          excelRows: rows,
-        });
-
-        // Yöneticiye/Marina'ya butonlu mesaj gönder
-        const { InlineKeyboard } = await import("grammy");
-        const keyboard = new InlineKeyboard();
-
-        // Varsayılan atamalar gerekebilir, şimdilik boş bırakalım
-        keyboard
-          .text("🧵 Dikiş Seç", `select_dept_staff:${draftId}|Dikişhane`)
-          .row()
-          .text("🪑 Döşeme Seç", `select_dept_staff:${draftId}|Döşemehane`)
-          .row()
-          .text("❌ İptal", `reject_order:${draftId}`);
-
-        await ctx.reply(
-          `📝 *Yeni Excel Siparişi (Taslak)*\n\n${summary}\n\nLütfen birimleri atayarak üretimi başlatın.`,
-          {
-            parse_mode: "Markdown",
-            reply_markup: keyboard,
-          },
-        );
-      } else {
+      if (!order) {
         await ctx.reply("❌ Sipariş verisi LLM tarafından ayrıştırılamadı.");
+        return;
       }
+
+      if (order.isDuplicate) {
+        await ctx.reply("⚠️ Bu sipariş zaten sistemde kayıtlı (mükerrer), tekrar işlenmedi.");
+        return;
+      }
+
+      const { DraftOrderService } = await import("../utils/draft-order.service");
+      const draftOrderService = DraftOrderService.getInstance();
+      const draftId = `tg_${Date.now()}`;
+      const floatingImages = (rows as any).floatingImages || [];
+
+      draftOrderService.saveDraft(draftId, {
+        order: order,
+        images: floatingImages,
+        excelRows: rows,
+      });
+
+      const summary = this.orderService.generateVisualTable(order);
+      const { InlineKeyboard } = await import("grammy");
+      const keyboard = new InlineKeyboard();
+
+      // FIX: Siparişte gerçekten hangi manuel departmanlar varsa onları göster
+      const MANUAL_DEPTS = ["Dikişhane", "Döşemehane", "Dikiş", "Döşeme", "Швейный цех", "Обивочный цех", "Швейный", "Обивочный", "Sewing", "Upholstery"];
+      const isManual = (dept: string) => {
+        const d = (dept || "").toLowerCase().trim();
+        return MANUAL_DEPTS.some((m) => d.includes(m.toLowerCase()) || m.toLowerCase().includes(d));
+      };
+
+      const manualDepts = Array.from(new Set(
+        order.items
+          .filter((i: any) => isManual(i.department))
+          .map((i: any) => i.department as string),
+      ));
+
+      const getDeptBtn = (dept: string) => {
+        if (dept.toLowerCase().includes("dikiş")) return "🧵 Dikişçi Seç";
+        if (dept.toLowerCase().includes("döşeme")) return "🪑 Döşemeci Seç";
+        if (dept.toLowerCase().includes("satınalma")) return "🛒 Satınalma Seç";
+        return `${dept} Seç`;
+      };
+
+      manualDepts.forEach((d) => {
+        keyboard.text(getDeptBtn(d), `select_dept_staff:${draftId}|${d}`).row();
+      });
+
+      keyboard.text("🚀 DAĞITIMI BAŞLAT", `auto_distribute:${draftId}`).row();
+      keyboard.text("❌ İptal", `reject_order:${draftId}`);
+
+      await ctx.reply(
+        `📝 <b>Yeni Excel Siparişi</b>\n\n${summary}\n\n${manualDepts.length > 0 ? "<b>Personel ataması gerekiyor:</b>" : "✅ Otomatik dağıtım hazır."}`,
+        {
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+        },
+      );
     } catch (error: any) {
       const errorMessage = error.response?.data?.error?.message || error.message;
       logger.error({

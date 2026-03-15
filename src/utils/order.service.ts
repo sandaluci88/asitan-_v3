@@ -135,34 +135,50 @@ export class OrderService {
 
       const prompt = `
       Sen profesyonel bir Sandaluci Üretim Planlama Asistanısın. Görevin, gelen veriyi (EXCEL tablosu veya E-POSTA gövdesi) analiz ederek departmanlara göre hatasız parçalamak ve ÇİFT DİLLİ (Türkçe ve Rusça) sipariş verisi oluşturmaktır.
-      
-      🚨 ÖNEMLİ: Girdi bir E-POSTA metniyse (özellikle "Fwd:" ile başlayan forwarded mailler), mailin alt kısımlarındaki asıl sipariş detaylarını bul ve odaklan. 
+
+      🚨 ÖNEMLİ: Girdi bir E-POSTA metniyse (özellikle "Fwd:" ile başlayan forwarded mailler), mailin alt kısımlarındaki asıl sipariş detaylarını bul ve odaklan.
       E-postanın en üstündeki yönlendirme bilgilerini (From, Date, Subject) geçerek, asıl mesaj gövdesindeki sipariş kalemlerini (Ürün, Adet, Kumaş, Boya vb.) tespit et.
-      
-      🚨 DİL KURALI: 
+
+      🚨 DİL KURALI:
       - Çalışanlar Rusça, patron (Barış Bey) Türkçe bilmektedir.
       - "product" ve "details" alanlarını HER ZAMAN "[TR] ... / [RU] ..." formatında doldur.
       - Örn: "product": "[TR] 274 Sandalye / [RU] 274 Стул"
       - Örn: "details": "[TR] Kumaş: Dorian 12 / [RU] Ткань: Dorian 12"
 
-      DEPARTMAN ATAMA KURALLARI:
-      - İSKELET/KARKAS: Eğer "YAPILACAK", "İSKELET YAPILACAK" veya karkas gereksinimi varsa -> "Karkas Üretimi".
-      - DİKİŞ/DÖŞEME: Kumaş kaplama, dikiş veya döşeme notu varsa -> HEM "Dikişhane" HEM DE "Döşemehane" için ayrı kalemler oluştur.
-      - KUMAŞ TEDARİK: Kumaş adı/kodu varsa -> "Kumaş" departmanına Marina Hanım için ayrı bir kalem oluştur. 
-      - BOYA/CİLA: Boya rengi veya cila notu varsa -> "Boyahane" departmanına kalem oluştur.
-      - DİĞER: "Metal Üretimi", "Mobilya Dekorasyon".
+      DEPARTMAN ATAMA KURALLARI (KESİNLİKLE UYMAK ZORUNDASIN):
+
+      1. PLASTİK ÜRÜN KURALI (EN YÜKSEK ÖNCELİK):
+         - Ürün adında, malzeme sütununda veya notlarda şu ifadelerden HERHANGİ BİRİ varsa -> department = "Satınalma"
+         - TR: plastik, polimer, pp, polipropilen, pvc, sentetik ayak, plastik ayak
+         - RU: пластик, пластиковый, полимер, полипропилен, пвх, пластмасса, пластиковые ножки
+         - Plastik ürünler üretilmez, SATIN ALINIR. Marina Hanım'a direkt gider.
+         - ÖRNEK: "Пластиковый стул" -> department="Satınalma", "Plastik sandalye" -> department="Satınalma"
+
+      2. KARKAS/İSKELET: "yapılacak", "iskelet", "çerçeve", "каркас", "рама" varsa -> department = "Karkas Üretimi"
+
+      3. DİKİŞHANE VE DÖŞEMEHANE (ÇOK ÖNEMLİ):
+         - Kumaş kaplama, dikiş, döşeme gerektiren ürünlerde MUTLAKA İKİ AYRI kalem oluştur:
+           a) department = "Dikişhane" (dikiş işi için)
+           b) department = "Döşemehane" (döşeme/kaplama işi için)
+         - Her ikisi de aynı ürün için ayrı item olarak eklenmelidir.
+         - ÖRNEK: Kumaşlı sandalye -> 1 item Dikişhane + 1 item Döşemehane
+
+      4. KUMAŞ TEDARİK: Kumaş adı/kodu varsa -> department = "Kumaş" (Marina Hanım için)
+
+      5. BOYA/CİLA: Boya rengi veya cila notu varsa -> department = "Boyahane"
+
+      6. DİĞER: "Metal Üretimi", "Mobilya Dekorasyon"
 
       🚨 KRİTİK KURALLAR:
       0. ROW INDEX: Tablodaki "RowIndex" sütunundaki değeri mutlaka her bir "item" için "rowIndex" alanına yaz. Bu, görsellerin doğru eşleşmesi için hayati önem taşır.
       1. ÜRÜN PARÇALAMA: Her bir departman işi için AYRI kalem (item) oluştur.
-      2. PLASTİK ÜRÜN KURALI: Eğer ürün türünde veya detaylarda "plastik" (sandalye, ayak vb.) geçiyorsa, bu ürünler "Satınalma" departmanına atanmalıdır.
-      3. DETAYLARIN KORUNMASI: Kumaş, boya ve teknik notları ilgili TÜM kalemlerin "details" kısmına ekle.
-      4. FABRIC VE PAINT ALANLARI: "fabricDetails" ve "paintDetails" nesnelerini doldur.
-      5. MÜŞTERİ BİLGİSİ: "customerName" alanına müşteri adını ve varsa proje adını yaz. Mail içinde "Müşteri:", "Proje:" veya "Ad Soyad:" gibi ifadeleri ara.
-      
+      2. DETAYLARIN KORUNMASI: Kumaş adı, boya rengi ve tüm teknik notları ilgili TÜM kalemlerin "details" kısmına ekle. Özellikle malzeme türünü (plastik, kumaş, boya) mutlaka details'a yaz.
+      3. FABRIC VE PAINT ALANLARI: "fabricDetails" ve "paintDetails" nesnelerini doldur.
+      4. MÜŞTERİ BİLGİSİ: "customerName" alanına müşteri adını ve varsa proje adını yaz. Mail içinde "Müşteri:", "Proje:" veya "Ad Soyad:" gibi ifadeleri ara.
+
       İÇERİK:
       ${fullContent}
-      
+
       SADECE SAF JSON DÖNDÜR:
       {
         "orderNumber": "...",
@@ -391,9 +407,19 @@ export class OrderService {
         const lowerProd = (item.product || "").toLowerCase();
         const lowerDetails = (item.details || "").toLowerCase();
         
-        const isPlastik = 
-          lowerProd.includes("plastik") || lowerProd.includes("пластик") || lowerProd.includes("plastic") ||
-          lowerDetails.includes("plastik") || lowerDetails.includes("пластик") || lowerDetails.includes("plastic");
+        // Plastik anahtar kelimeleri (TR + RU + EN)
+        const plasticKeywords = [
+          "plastik", "пластик", "plastic",
+          "полимер", "polimer",
+          "полипропилен", "polipropilen", "pp ",
+          "пластмасс", "plasmas",
+          "пвх", "pvc",
+          "пластиковый", "пластиковые", "пластиковая", "пластиковых",
+          "синтетик", "sentetik",
+        ];
+        const isPlastik = plasticKeywords.some(
+          (kw) => lowerProd.includes(kw) || lowerDetails.includes(kw),
+        );
 
         if (isPlastik) {
           console.log(

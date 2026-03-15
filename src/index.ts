@@ -302,7 +302,7 @@ bot.callbackQuery(/^finalize_dist:(.+)$/, async (ctx) => {
 
   await ctx.answerCallbackQuery("🚀 Üretim başlatılıyor...");
 
-  // 1. Manuel departmanlara PDF'leri gönder
+  // 1. Manuel departmanlara (atanmış işçisi olanlar) PDF gönder
   const assignedDepts = Array.from(
     new Set(
       draft.order.items
@@ -311,17 +311,23 @@ bot.callbackQuery(/^finalize_dist:(.+)$/, async (ctx) => {
     ),
   ) as string[];
 
-  // Sadece Manuel olanları filtreleyelim
   const onlyManual = assignedDepts.filter((d) => isManualDept(d));
 
+  // FIX: Auto departmanları da gönder (Karkas, Boyahane vb. atlanmasın)
+  const autoDepts = Array.from(
+    new Set(draft.order.items.map((i: any) => i.department as string)),
+  ).filter((d: string) => !isManualDept(d)) as string[];
+
+  const allDeptsToSend = [...new Set([...onlyManual, ...autoDepts])];
+
   let report = { success: [] as string[], failed: [] as string[] };
-  if (onlyManual.length > 0) {
+  if (allDeptsToSend.length > 0) {
     report = await processOrderDistribution(
       draft.order,
       draft.images || [],
       draft.excelRows || [],
       undefined,
-      onlyManual,
+      allDeptsToSend,
       false,
     );
   }
@@ -375,12 +381,26 @@ bot.callbackQuery(/^auto_distribute:(.+)$/, async (ctx) => {
   const draft = draftOrderService.getDraft(draftId);
   if (!draft) return ctx.answerCallbackQuery("❌ Taslak bulunamadı.");
 
-  // Eğer hiç manuel departman yoksa direkt finalize et
   const hasManual = draft.order.items.some((i: any) =>
     isManualDept(i.department),
   );
   if (!hasManual) {
-    // finalize_dist logic
+    // Manuel dept yok — tüm auto deptlere gönder
+    const autoDepts = Array.from(
+      new Set(draft.order.items.map((i: any) => i.department as string)),
+    ).filter((d: string) => !isManualDept(d)) as string[];
+
+    if (autoDepts.length > 0) {
+      await processOrderDistribution(
+        draft.order,
+        draft.images || [],
+        draft.excelRows || [],
+        undefined,
+        autoDepts,
+        false,
+      );
+    }
+
     const summaryPdf = await orderService.generateMarinaSummaryPDF(draft.order);
     await bot.api.sendDocument(
       marinaId,
