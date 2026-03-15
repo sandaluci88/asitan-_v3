@@ -19,7 +19,7 @@ export class ProactiveService {
     this.bot = bot;
     this.supervisorId = supervisorId;
     this.doctorService = new DoctorService();
-    this.orderService = new OrderService();
+    this.orderService = OrderService.getInstance();
     this.staffService = StaffService.getInstance();
     this.llmService = new OpenRouterService();
   }

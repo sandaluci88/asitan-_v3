@@ -15,7 +15,7 @@ export class CommandHandler {
     this.productionService = new ProductionService();
     this.calendarService = new CalendarService();
     this.staffService = StaffService.getInstance();
-    this.orderService = new OrderService();
+    this.orderService = OrderService.getInstance();
   }
 
   private isBoss(ctx: Context): boolean {

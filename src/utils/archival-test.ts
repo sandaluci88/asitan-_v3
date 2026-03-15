@@ -6,7 +6,7 @@ import pino from "pino";
 const logger = pino({ name: "ArchivalTest" });
 
 async function runTest() {
-  const orderService = new OrderService();
+  const orderService = OrderService.getInstance();
 
   // 1. Prepare dummy data
   const dateStr = new Array(1).fill(new Date().toISOString().split("T")[0])[0];

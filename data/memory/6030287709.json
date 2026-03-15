@@ -28,5 +28,15 @@
     "role": "assistant",
     "content": "Selam. Sandaluci üretim ve operasyon süreçlerinde size nasıl yardımcı olabilirim?",
     "timestamp": 1773323480108
+  },
+  {
+    "role": "user",
+    "content": "/ durum",
+    "timestamp": 1773517073000
+  },
+  {
+    "role": "assistant",
+    "content": "Sipariş durumlarını raporlayabilmem için lütfen ilgili **Müşteri Adı** veya **Sipariş Numarasını** belirtin. \n\nEğer tüm aktif siparişlerin genel özetini istiyorsanız, son durumu departman bazlı (Karkas, Boyahane, Döşemehane) hemen listeleyebilirim. Hangi veriyi görmek istersiniz?",
+    "timestamp": 1773517074906
   }
 ]

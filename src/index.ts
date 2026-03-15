@@ -70,7 +70,7 @@ if (!token) {
 const bot = new Bot(token);
 const staffService = StaffService.getInstance();
 const draftOrderService = DraftOrderService.getInstance();
-const orderService = new OrderService();
+const orderService = OrderService.getInstance();
 const messageHandler = new MessageHandler();
 const commandHandler = new CommandHandler();
 const doctorService = new DoctorService();
@@ -728,7 +728,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
 
               orderService
                 .saveToVisualMemory(order)
-                .catch((e) =>
+                .catch((e: any) =>
                   logger.warn({ err: e }, "⚠️ Görsel hafıza hatası."),
                 );
 
@@ -806,7 +806,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
                   deptsToAssign.forEach((d) => {
                     keyboard
                       .text(
-                        getDeptButtonLabel(d, false),
+                        getDeptButtonLabel(d, false) as string,
                         `select_dept_staff:${draftId}|${d}`,
                       )
                       .row();
@@ -937,7 +937,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
             deptsToAssign.forEach((d) => {
               keyboard
                 .text(
-                  getDeptButtonLabel(d, false),
+                  getDeptButtonLabel(d, false) as string,
                   `select_dept_staff:${draftId}|${d}`,
                 )
                 .row();

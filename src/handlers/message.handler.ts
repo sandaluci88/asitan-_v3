@@ -20,7 +20,7 @@ export class MessageHandler {
     this.supabaseService = SupabaseService.getInstance();
     this.llmService = new OpenRouterService();
     this.staffService = StaffService.getInstance();
-    this.orderService = new OrderService();
+    this.orderService = OrderService.getInstance();
     this.voiceService = new VoiceService();
   }
 

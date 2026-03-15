@@ -9,7 +9,7 @@ dotenv.config();
 
 async function runTest(uid: number) {
   const gmailService = GmailService.getInstance();
-  const orderService = new OrderService();
+  const orderService = OrderService.getInstance();
 
   logger.info(`🔍 Fetching email UID: ${uid}...`);
   const msg = await gmailService.fetchOneMessage(uid);
