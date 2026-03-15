@@ -90,7 +90,12 @@ export class VoiceService {
       logger.warn("⚠️ Transcription metin döndürmedi.");
       return null;
     } catch (error: any) {
-      logger.error({ error: error.message, stack: error.stack }, "❌ Sesli mesaj çeviri hatası");
+      const errorMessage = error.response?.data?.error?.message || error.message;
+      logger.error({ 
+        error: errorMessage,
+        status: error.status,
+        fileId 
+      }, "❌ Sesli mesaj çeviri hatası (Groq/Whisper)");
       return null;
     } finally {
       // Temizlik

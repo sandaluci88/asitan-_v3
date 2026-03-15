@@ -6,6 +6,7 @@ import { StaffService } from "../utils/staff.service";
 import { OrderService } from "../utils/order.service";
 import { VoiceService } from "../utils/voice.service";
 import { memoryService } from "../utils/memory.service";
+import { logger } from "../utils/logger";
 
 export class MessageHandler {
   private productionService: ProductionService;
@@ -45,8 +46,8 @@ export class MessageHandler {
       if (!transcribedText) {
         await ctx.reply(
           isBoss
-            ? "❌ Sesli mesajınızı çözümleyemedim. Lütfen tekrar deneyin veya yazılı mesaj gönderin."
-            : "❌ Не удалось расшифровать голосовое сообщение.",
+            ? "Üzgünüm Barış Bey, sesinizi net olarak çözümleyemedim. 🎙️ Tekrar dener misiniz veya yazılı olarak iletebilir misiniz?"
+            : "❌ Üzgünüm, sesli mesajınızı şu an işleyemiyorum. Lütfen yazılı olarak mesaj gönderin.",
         );
         return;
       }
@@ -188,9 +189,19 @@ export class MessageHandler {
       } else {
         await ctx.reply("❌ Sipariş verisi LLM tarafından ayrıştırılamadı.");
       }
-    } catch (error) {
-      console.error("Telegram Excel processing error:", error);
-      await ctx.reply("❌ Dosya işlenirken bir hata oluştu.");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error?.message || error.message;
+      logger.error({
+        error: errorMessage,
+        status: error.status,
+        fileId: doc.file_id,
+        fileName: fileName,
+        chatId: ctx.chat?.id,
+        userId: ctx.from?.id,
+      }, "❌ Excel dosyası işlenirken bir hata oluştu.");
+      await ctx.reply(
+        "❌ Üzgünüm, Excel dosyanızı işlerken bir sorun çıktı. Lütfen dosyanın doğru formatta olduğundan emin olup tekrar dener misiniz?"
+      );
     }
   }
 
