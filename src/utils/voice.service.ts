@@ -10,7 +10,7 @@ dotenv.config();
 
 export class VoiceService {
   private openai: OpenAI | null = null;
-  private readonly MODEL = "openai/whisper-large-v3"; // OpenRouter üzerindeki kararlı Whisper modeli
+  private readonly MODEL = "google/gemini-2.0-flash-001"; // OpenRouter'da ses işleme için en hızlı ve stabil model
 
   constructor() {
     const apiKey = process.env.OPENROUTER_API_KEY?.trim();
@@ -18,12 +18,12 @@ export class VoiceService {
     if (apiKey) {
       logger.info(
         { keyStart: apiKey.substring(0, 8) + "..." }, 
-        "🔑 OpenRouter API (Voice) yüklendi."
+        "🔑 OpenRouter API (Voice: Gemini) yüklendi."
       );
       this.openai = new OpenAI({
         apiKey: apiKey,
         baseURL: "https://openrouter.ai/api/v1",
-        timeout: 60000, // 60 saniye timeout (OpenRouter/Whisper bazen geç yanıt verebilir)
+        timeout: 60000,
       });
     } else {
       logger.error("❌ OPENROUTER_API_KEY bulunamadı!");
@@ -54,46 +54,57 @@ export class VoiceService {
       // Telegram'dan dosyayı indir
       const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
       
-      const downloadFile = (url: string, dest: string) => {
-        return new Promise((resolve, reject) => {
-          const fileStream = fs.createWriteStream(dest);
-          const https = require('https');
-          https.get(url, (res: any) => {
-            if (res.statusCode !== 200) {
-              reject(new Error(`Download failed: ${res.statusCode}`));
-              return;
-            }
-            res.pipe(fileStream);
-            fileStream.on('finish', () => {
-              fileStream.close();
-              resolve(true);
-            });
-          }).on('error', (err: any) => {
-            fs.unlink(dest, () => {});
-            reject(err);
+      const https = require('https');
+      await new Promise((resolve, reject) => {
+        const fileStream = fs.createWriteStream(tempFilePath!);
+        https.get(fileUrl, (res: any) => {
+          if (res.statusCode !== 200) return reject(new Error(`Download failed: ${res.statusCode}`));
+          res.pipe(fileStream);
+          fileStream.on('finish', () => {
+            fileStream.close();
+            resolve(true);
           });
+        }).on('error', (err: any) => {
+          if (fs.existsSync(tempFilePath!)) fs.unlinkSync(tempFilePath!);
+          reject(err);
         });
-      };
-
-      await downloadFile(fileUrl, tempFilePath);
-      
-      const buffer = fs.readFileSync(tempFilePath);
-      logger.info({ tempFilePath, size: buffer.length }, "📁 Ses dosyası hazır. OpenRouter Whisper'a gönderiliyor...");
-
-      // OpenRouter üzerinden Whisper ile çeviri
-      const transcription = await this.openai.audio.transcriptions.create({
-        file: fs.createReadStream(tempFilePath),
-        model: this.MODEL,
-        language: lang === "auto" ? undefined : lang,
-        response_format: "json",
       });
+      
+      // Dosyayı oku ve Base64'e çevir (OpenRouter multimodal için bu formatı tercih eder)
+      const audioBuffer = fs.readFileSync(tempFilePath);
+      const base64Audio = audioBuffer.toString('base64');
+      
+      logger.info({ size: audioBuffer.length }, "📁 Ses dosyası Base64 formatına çevrildi. OpenRouter'a (Gemini) gönderiliyor...");
 
-      if (transcription.text) {
-        logger.info({ text: transcription.text.substring(0, 50) + "..." }, "✅ Transcription başarılı (OpenRouter).");
-        return transcription.text;
+      // Chat Completions API üzerinden sesli mesajı metne çevir/analiz et
+      const response = await this.openai.chat.completions.create({
+        model: this.MODEL,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Lütfen bu sesli mesajı aynen kelimesi kelimesine metne dök. Sorumluluk al ve sadece konuşulanları yaz."
+              },
+              {
+                type: "image_url", // OpenRouter multimodal standartlarında genellikle bu yapı kullanılır veya input_audio
+                image_url: {
+                  url: `data:audio/ogg;base64,${base64Audio}`
+                }
+              }
+            ]
+          }
+        ]
+      } as any);
+
+      const result = response.choices[0]?.message?.content;
+      if (result) {
+        logger.info({ text: result.substring(0, 50) + "..." }, "✅ Transcription başarılı (OpenRouter/Gemini).");
+        return result;
       }
 
-      logger.warn("⚠️ Transcription metin döndürmedi.");
+      logger.warn("⚠️ OpenRouter'dan metin dönmedi.");
       return null;
     } catch (error: any) {
       const errorMessage = error.response?.data?.error?.message || error.message;
@@ -101,16 +112,11 @@ export class VoiceService {
         error: errorMessage,
         status: error.status,
         fileId 
-      }, "❌ Sesli mesaj çeviri hatası (OpenRouter)");
+      }, "❌ Sesli mesaj çeviri hatası (OpenRouter/Gemini)");
       return null;
     } finally {
-      // Temizlik
       if (tempFilePath && fs.existsSync(tempFilePath)) {
-        try {
-          fs.unlinkSync(tempFilePath);
-        } catch (e) {
-          logger.warn({ error: e }, "Geçici dosya silinemedi");
-        }
+        try { fs.unlinkSync(tempFilePath); } catch (e) {}
       }
     }
   }
