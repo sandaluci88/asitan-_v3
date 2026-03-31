@@ -99,8 +99,6 @@ export class SupabaseService {
         department: staff.department,
         role: staff.role,
         phone: staff.phone,
-        is_marina: staff.isMarina,
-        is_verified: staff.isVerified ?? true, // Mevcut kayıtlar varsayılan olarak verified
       },
       { onConflict: "telegram_id" },
     );

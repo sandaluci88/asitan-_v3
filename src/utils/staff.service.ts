@@ -18,11 +18,13 @@ export class StaffService {
   private static instance: StaffService;
   private supabase: SupabaseService;
   private staffFilePath: string;
+  private memoryFilePath: string;
   private staffList: Staff[] = [];
 
   private constructor() {
     this.supabase = SupabaseService.getInstance();
     this.staffFilePath = path.resolve(process.cwd(), "data", "staff.json");
+    this.memoryFilePath = path.resolve(process.cwd(), "data", "memory.md");
     this.ensureDataDirectory();
     this.loadStaffFromSupabase(); // Başlangıçta DB'den çek
   }
@@ -191,8 +193,8 @@ export class StaffService {
       // DB başarılıysa yerel listeyi tazele
       await this.loadStaffFromSupabase();
     } catch (error) {
-      console.error("❌ Personel DB'ye kaydedilemedi:", error);
-      throw error;
+      console.error("❌ Personel DB'ye kaydedilemedi (Supabase hatası):", error);
+      // Hata fırlatmıyoruz ki middleware çökmesin, yerel listeyle devam edilsin.
     }
   }
 
@@ -283,6 +285,34 @@ export class StaffService {
     return false;
   }
 
+  /**
+   * Patronun (Barış Bey) daha önce özel cümleyle tanınıp tanınmadığını kontrol eder.
+   */
+  public isBossRecognizedInMemory(): boolean {
+    if (!fs.existsSync(this.memoryFilePath)) return false;
+    const content = fs.readFileSync(this.memoryFilePath, "utf-8");
+    return content.includes("BARIS_BEY_RECOGNIZED=TRUE");
+  }
+
+  /**
+   * Patronun tanındığını memory.md dosyasına kaydeder.
+   */
+  public async setBossRecognizedInMemory() {
+    const timestamp = new Date().toISOString();
+    const entry = `\n<!-- MEMORY_ENTRY_START -->\n[${timestamp}] BARIŞ_BEY_RECOGNIZED=TRUE\nBarış Bey asistan Ayça tarafından başarıyla tanındı ve sisteme dahil edildi.\n<!-- MEMORY_ENTRY_END -->\n`;
+    
+    try {
+      if (!fs.existsSync(this.memoryFilePath)) {
+        fs.writeFileSync(this.memoryFilePath, "# Sandaluci - Ayça Hafıza Kayıtları\n" + entry);
+      } else {
+        fs.appendFileSync(this.memoryFilePath, entry);
+      }
+      console.log("📝 Ayça hafızasına Barış Bey'i kaydetti.");
+    } catch (error) {
+      console.error("❌ Memory dosyasına yazılamadı:", error);
+    }
+  }
+
   public isBoss(telegramId: number): boolean {
     const bossIdRaw = (process.env.TELEGRAM_BOSS_ID || "").trim();
     // Virgül ile ayrılmış birden fazla ID'yi destekle (Örn: "ID1,ID2" veya "ID1")
@@ -317,15 +347,23 @@ export class StaffService {
     let count = 0;
     for (const row of rows) {
       if (row.phone) {
-        await this.supabase.upsertStaff({
-          name: row.name || "Bilinmiyor",
-          phone: row.phone.toString(),
-          department: row.department || "Diğer",
-        });
-        count++;
+        try {
+          await this.supabase.upsertStaff({
+            name: row.name || "Bilinmiyor",
+            phone: row.phone.toString(),
+            department: row.department || "Diğer",
+          });
+          count++;
+        } catch (err) {
+          console.error(`❌ Personel Excel satırı Supabase'e yazılamadı:`, err);
+        }
       }
     }
-    await this.loadStaffFromSupabase();
+    try {
+      await this.loadStaffFromSupabase();
+    } catch (e) {
+      console.warn("⚠️ Excel sonrası personel DB'den tazelenemedi.");
+    }
     return { count };
   }
 

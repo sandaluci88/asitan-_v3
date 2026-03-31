@@ -105,6 +105,22 @@ if (!token) {
 
 // Bot ve Handler'ları başlatalım
 const bot = new Bot(token);
+
+// --- Hata Yönetimi (Global) ---
+bot.catch((err) => {
+  const ctx = err.ctx;
+  logger.error({ 
+    error: err.error, 
+    update: ctx.update,
+    userId: ctx.from?.id 
+  }, "❌ Bot Hatası Yakalandı!");
+
+  // Kullanıcıya bilgi ver (isteğe bağlı)
+  if (ctx.from) {
+    bot.api.sendMessage(ctx.from.id, "⚠️ Üzgünüm, bir bağlantı hatası oluştu. Lütfen tekrar deneyin.").catch(() => {});
+  }
+});
+
 const staffService = StaffService.getInstance();
 const draftOrderService = DraftOrderService.getInstance();
 const orderService = OrderService.getInstance();
@@ -171,16 +187,20 @@ bot.use(async (ctx, next) => {
   // KRİTİK: Eğer kişi PATRON ise ama henüz veritabanında (staff.json) yoksa, OTOMATİK KAYDET.
   // Bu sayede Barış Bey asla 'Seni tanımıyorum' mesajı almaz.
   if (isBoss && !staffMember) {
-    console.log(`🚀 [Patron Tanıma] Barış Bey (${userId}) sisteme otomatik kaydediliyor...`);
-    await staffService.registerStaff(
-      userId,
-      "Barış",
-      "Yönetim",
-      undefined,
-      "SuperAdmin",
-      "tr"
-    );
-    staffMember = staffService.getStaffByTelegramId(userId); // Tekrar çekelim
+    try {
+      console.log(`🚀 [Patron Tanıma] Barış Bey (${userId}) sisteme otomatik kaydediliyor...`);
+      await staffService.registerStaff(
+        userId,
+        "Barış",
+        "Yönetim",
+        undefined,
+        "SuperAdmin",
+        "tr"
+      );
+      staffMember = staffService.getStaffByTelegramId(userId); // Tekrar çekelim
+    } catch (regErr) {
+      console.error("⚠️ Patron otomatik kaydedilemedi, yerel veriyle devam ediliyor:", regErr);
+    }
   }
 
   const isRegisteredStaff = !!staffMember;
@@ -203,6 +223,20 @@ bot.use(async (ctx, next) => {
     return ctx.reply(
       "❌ Bu işlem sadece Barış Bey (Patron) tarafından gerçekleştirilebilir.",
     );
+  }
+
+  // Özel patron tanıma cümlesi (Fuzzy Match / Esnek Eşleşme - "ben barş", "ben baris" vb.)
+  const normalizedText = text.toLowerCase().trim();
+  const bossRegex = /ben\s*(bar[ıisş])|id\s*(kontro[l]*)/i;
+  const isSpecialPhrase = bossRegex.test(normalizedText);
+
+  if (isSpecialPhrase && isBoss) {
+    if (!staffService.isBossRecognizedInMemory()) {
+      await staffService.setBossRecognizedInMemory();
+      return ctx.reply(`✅ **Sistem Sizi Tanıdı Barış Bey.**\n\n📌 **ID:** \`${userId}\`\n🛡️ **Rol:** \`SuperAdmin\`\n🌐 **Dil:** \`Türkçe (tr)\`\n\nBu tanışmayı hafızama kaydettim (memory.md). Sandaluci personeli artık otomatik selamlanmayacak, sadece size özel bir sistem kuruldu.`, { parse_mode: "Markdown" });
+    } else {
+      return ctx.reply("Buyurun Barış Bey, sizi dinliyorum. 👋");
+    }
   }
 
   if (isBoss || isRegisteredStaff || isRegisterCommand || isStartCommand) {
@@ -866,6 +900,7 @@ if (process.env.GMAIL_ENABLED !== "false") {
                 isManualDept(i.department),
               );
 
+
               // PDF Önizleme Resmi Oluşturma (Opsiyonel)
               let pdfPreviewImg: Buffer | undefined;
               try {
@@ -1090,9 +1125,13 @@ if (botEnabled) {
 
     // Cron servisini başlat (Sabah brifingi, hatırlatıcılar vb.)
     try {
-      const cronService = CronService.getInstance(bot, supervisorId);
-      cronService.init();
-      console.log("⏰ Cron Service initialized and started.");
+      if (supervisorId && supervisorId !== 0) {
+        const cronService = CronService.getInstance(bot, supervisorId);
+        cronService.init();
+        console.log("⏰ Cron Service initialized and started.");
+      } else {
+        console.warn("⚠️ Cron Service skipped: TELEGRAM_MARINA_ID (supervisorId) missing.");
+      }
     } catch (cronErr) {
       console.error("❌ Cron Service start error:", cronErr);
     }
