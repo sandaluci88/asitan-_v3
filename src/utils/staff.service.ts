@@ -193,8 +193,18 @@ export class StaffService {
       // DB başarılıysa yerel listeyi tazele
       await this.loadStaffFromSupabase();
     } catch (error) {
-      console.error("❌ Personel DB'ye kaydedilemedi (Supabase hatası):", error);
-      // Hata fırlatmıyoruz ki middleware çökmesin, yerel listeyle devam edilsin.
+      console.error(
+        "❌ Personel DB'ye kaydedilemedi (Supabase hatası):",
+        error,
+      );
+      // Supabase olmadan devam: yerel listeye ekle ve kaydet
+      const existingIdx = this.staffList.findIndex((s) => s.telegramId === telegramId);
+      if (existingIdx >= 0) {
+        this.staffList[existingIdx] = { ...this.staffList[existingIdx], ...staffData };
+      } else {
+        this.staffList.push(staffData as Staff);
+      }
+      this.saveToLocalFile();
     }
   }
 
@@ -229,11 +239,22 @@ export class StaffService {
       try {
         await this.supabase.upsertStaff(staffData);
       } catch (err) {
-        console.error(`❌ ${name} kaydı sırasında hata:`, err);
+        console.error(`❌ ${name} kaydı sırasında hata, yerele ekleniyor:`, err);
+        const existingIdx = this.staffList.findIndex((s) => s.name === name.toString().trim());
+        if (existingIdx >= 0) {
+          this.staffList[existingIdx] = { ...this.staffList[existingIdx], ...staffData };
+        } else {
+          this.staffList.push(staffData);
+        }
+        this.saveToLocalFile();
       }
     }
 
-    await this.loadStaffFromSupabase();
+    try {
+      await this.loadStaffFromSupabase();
+    } catch (e) {
+      // hata loglanır
+    }
   }
 
   /**
@@ -264,8 +285,13 @@ export class StaffService {
       await this.loadStaffFromSupabase();
       return updatedStaff;
     } catch (err) {
-      console.error("❌ Kayıt tamamlanamadı:", err);
-      return null;
+      console.error("❌ Kayıt Supabase'e tamamlanamadı, yerel listeye alınıyor:", err);
+      const index = this.staffList.findIndex((s) => s.phone === staff.phone);
+      if (index !== -1) {
+        this.staffList[index] = updatedStaff;
+        this.saveToLocalFile();
+      }
+      return updatedStaff;
     }
   }
 
@@ -274,13 +300,12 @@ export class StaffService {
     if (index !== -1) {
       try {
         await this.supabase.deleteStaff(telegramId);
-        this.staffList.splice(index, 1);
-        this.saveToLocalFile();
-        return true;
       } catch (error) {
-        console.error("❌ Personel DB'den silinemedi:", error);
-        return false;
+        console.error("❌ Personel DB'den silinemedi (yerel listeden silinmeye devam edilecek):", error);
       }
+      this.staffList.splice(index, 1);
+      this.saveToLocalFile();
+      return true;
     }
     return false;
   }
@@ -300,10 +325,13 @@ export class StaffService {
   public async setBossRecognizedInMemory() {
     const timestamp = new Date().toISOString();
     const entry = `\n<!-- MEMORY_ENTRY_START -->\n[${timestamp}] BARIŞ_BEY_RECOGNIZED=TRUE\nBarış Bey asistan Ayça tarafından başarıyla tanındı ve sisteme dahil edildi.\n<!-- MEMORY_ENTRY_END -->\n`;
-    
+
     try {
       if (!fs.existsSync(this.memoryFilePath)) {
-        fs.writeFileSync(this.memoryFilePath, "# Sandaluci - Ayça Hafıza Kayıtları\n" + entry);
+        fs.writeFileSync(
+          this.memoryFilePath,
+          "# Sandaluci - Ayça Hafıza Kayıtları\n" + entry,
+        );
       } else {
         fs.appendFileSync(this.memoryFilePath, entry);
       }
@@ -324,7 +352,9 @@ export class StaffService {
     const isMatch = bossIds.includes(telegramId.toString());
 
     if (isMatch) {
-      console.log(`✅ [isBoss Match] User: ${telegramId} is recognized as BOSS`);
+      console.log(
+        `✅ [isBoss Match] User: ${telegramId} is recognized as BOSS`,
+      );
       return true;
     } else if (bossIdRaw) {
       console.log(

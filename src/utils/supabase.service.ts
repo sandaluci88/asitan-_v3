@@ -87,13 +87,22 @@ export class SupabaseService {
   }
 
   async upsertStaff(staff: any) {
-    // telegram_id üzerinden deterministik bir UUID benzeri yapı oluştur (veya rastgele)
-    // Supabase'de id UUID tipinde olduğu için geçerli bir UUID göndermeliyiz.
-    const staffId = staff.id && staff.id.length > 10 ? staff.id : undefined;
+    // Önce bu telegram_id'ye sahip personel var mı kontrol edelim
+    const { data: existing } = await this.client
+      .from("staff")
+      .select("id")
+      .eq("telegram_id", staff.telegramId)
+      .maybeSingle();
+
+    const crypto = require("crypto");
+    // Veritabanında varsa onun ID'sini, yoksa bize gelen ID'yi, o da yoksa yeni bir UUID kullan
+    const staffId = existing 
+      ? existing.id 
+      : (staff.id && staff.id.length > 10 ? staff.id : crypto.randomUUID());
 
     const { data, error } = await this.client.from("staff").upsert(
       {
-        id: staffId, // id varsa gönder, yoksa Supabase üretemiyor (auth.uid() null dönüyor)
+        id: staffId,
         telegram_id: staff.telegramId,
         name: staff.name,
         department: staff.department,
