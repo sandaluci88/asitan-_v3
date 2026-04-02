@@ -39,7 +39,8 @@ export class CommandHandler {
       : null;
     const isBoss = this.isBoss(ctx);
     const isCoordinator = this.isCoordinator(ctx);
-    const lang = staffMember?.language || (isBoss || isCoordinator ? "tr" : "ru");
+    const lang =
+      staffMember?.language || (isBoss || isCoordinator ? "tr" : "ru");
 
     if (isBoss) {
       await ctx.reply(t("welcome_boss", lang as Language), {
@@ -358,7 +359,8 @@ export class CommandHandler {
     // 2. Veritabanı temizliği (Supabase)
     let dbError = null;
     try {
-      const supabase = require("../utils/supabase.service").SupabaseService.getInstance();
+      const supabase =
+        require("../utils/supabase.service").SupabaseService.getInstance();
       await supabase.resetDatabase();
     } catch (e: any) {
       dbError = e.message;
@@ -366,7 +368,8 @@ export class CommandHandler {
 
     if (fileResult.success && !dbError) {
       let report = "✨ *Temizlik Başarıyla Tamamlandı!*\n\n";
-      report += "📦 *Supabase:* Siparişler ve görsel hafıza sıfırlandı. (Personel listesi korundu)\n";
+      report +=
+        "📦 *Supabase:* Siparişler ve görsel hafıza sıfırlandı. (Personel listesi korundu)\n";
 
       if (fileResult.deletedItems.length > 0) {
         report += "\n🗑️ *Silinen Dosyalar:*\n";

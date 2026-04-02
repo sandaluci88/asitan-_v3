@@ -846,28 +846,28 @@ if (process.env.GMAIL_ENABLED !== "false") {
 
   let isProcessingEmail = false;
 
-    setInterval(async () => {
-      if (isProcessingEmail) {
-        logger.warn("⏳ Önceki e-posta işleme henüz bitmedi, döngü atlanıyor.");
-        return;
+  setInterval(async () => {
+    if (isProcessingEmail) {
+      logger.warn("⏳ Önceki e-posta işleme henüz bitmedi, döngü atlanıyor.");
+      return;
+    }
+    isProcessingEmail = true;
+
+    try {
+      // Her döngü başında işlenmiş UID listesini tazeleyerek senkronizasyonu sağla
+      loadProcessedUids();
+
+      if (!gmailService) {
+        const { GmailService } = await import("./utils/gmail.service");
+        gmailService = GmailService.getInstance();
       }
-      isProcessingEmail = true;
-
-      try {
-        // Her döngü başında işlenmiş UID listesini tazeleyerek senkronizasyonu sağla
-        loadProcessedUids();
-
-        if (!gmailService) {
-          const { GmailService } = await import("./utils/gmail.service");
-          gmailService = GmailService.getInstance();
+      logger.info("🔍 Gmail kontrol ediliyor...");
+      // Standart: Sadece okunmamış mesajları işle
+      await gmailService.processUnreadMessages(30, async (msg: any) => {
+        if (processedUids.has(msg.uid.toString())) {
+          logger.info(`🔄 UID ${msg.uid} zaten işlendi, atlanıyor.`);
+          return;
         }
-        logger.info("🔍 Gmail kontrol ediliyor...");
-        // Standart: Sadece okunmamış mesajları işle
-        await gmailService.processUnreadMessages(30, async (msg: any) => {
-          if (processedUids.has(msg.uid.toString())) {
-            logger.info(`🔄 UID ${msg.uid} zaten işlendi, atlanıyor.`);
-            return;
-          }
 
         // Önemli: Takılmaları ve Telegram spamını önlemek için en başta işaretle
         processedUids.add(msg.uid.toString());

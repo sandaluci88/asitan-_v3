@@ -81,13 +81,18 @@ function isPlastic(tur: string, urunAdi: string, not: string): boolean {
 function translateProductionTerm(text: string): string {
   if (!text) return "";
   let t = text.toLowerCase().trim();
-  
+
   // Durumlar
-  if (t.includes("üretim yapılacak") || t.includes("üretilecek") || t.includes("yapılacak")) return "Произвести";
+  if (
+    t.includes("üretim yapılacak") ||
+    t.includes("üretilecek") ||
+    t.includes("yapılacak")
+  )
+    return "Произвести";
   if (t.includes("stoktan") || t.includes("stok")) return "Со склада";
   if (t.includes("hazır")) return "Готово";
   if (t.includes("acil")) return "СРОЧНО";
-  
+
   // Boya & Kaplama
   if (t === "parlak") return "Глянцевый";
   if (t === "mat") return "Матовый";
@@ -97,7 +102,7 @@ function translateProductionTerm(text: string): string {
   if (t === "ceviz") return "Орех";
   if (t === "naturel") return "Натуральный";
   if (t === "lake") return "Лакированный";
-  
+
   return text;
 }
 
@@ -105,17 +110,17 @@ function translateProductionTerm(text: string): string {
  * Ürün isimlerini Rusçaya çeviren sözlük
  */
 const PRODUCT_TRANSLATIONS: Record<string, string> = {
-  "sandalye": "Стул",
-  "masa": "Стол",
-  "koltuk": "Кресло",
-  "tabure": "Табурет",
+  sandalye: "Стул",
+  masa: "Стол",
+  koltuk: "Кресло",
+  tabure: "Табурет",
   "bar taburesi": "Барный табурет",
-  "sehpa": "Журнальный столик",
-  "benç": "Банкетка",
-  "puf": "Пуф",
-  "berjer": "Кресло-бержер",
-  "metal": "Металлический",
-  "ahşap": "Деревянный",
+  sehpa: "Журнальный столик",
+  benç: "Банкетка",
+  puf: "Пуф",
+  berjer: "Кресло-бержер",
+  metal: "Металлический",
+  ahşap: "Деревянный",
 };
 
 /**
@@ -124,14 +129,14 @@ const PRODUCT_TRANSLATIONS: Record<string, string> = {
 function translateProductName(name: string): string {
   if (!name) return "";
   const lowerName = name.toLowerCase();
-  
+
   let ruName = name;
   for (const [tr, ru] of Object.entries(PRODUCT_TRANSLATIONS)) {
     if (lowerName.includes(tr)) {
       ruName = ruName.replace(new RegExp(tr, "gi"), ru);
     }
   }
-  
+
   // Eğer hiçbir şey değişmediyse olduğu gibi bırak, değiştiyse [TR] / [RU] yapma (Kullanıcı "boyahane için direkt Rusça" istedi)
   return ruName;
 }
@@ -481,8 +486,12 @@ function makeItem(
   // Departman bazlı ürün ismi çevirisi (Boyahane için RU zorunlu)
   const isRussianRequired =
     department === "Boyahane" || department === "Satınalma";
-  const translatedUrunAdi = isRussianRequired ? translateProductName(urunAdi) : urunAdi;
-  const translatedDetails = isRussianRequired ? translateProductionTerm(details) : details;
+  const translatedUrunAdi = isRussianRequired
+    ? translateProductName(urunAdi)
+    : urunAdi;
+  const translatedDetails = isRussianRequired
+    ? translateProductionTerm(details)
+    : details;
 
   return {
     id: `${orderId}_${index}`,

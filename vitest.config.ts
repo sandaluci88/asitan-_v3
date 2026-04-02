@@ -5,7 +5,11 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.test.ts"],
-    exclude: ["tests/groq.test.ts", "tests/llm_parse_test.ts", "tests/timezone_check.ts"],
+    exclude: [
+      "tests/groq.test.ts",
+      "tests/llm_parse_test.ts",
+      "tests/timezone_check.ts",
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

@@ -39,9 +39,16 @@ describe("StaffService", () => {
       const { StaffService } = await import("../src/utils/staff.service");
       const staffService = StaffService.getInstance();
 
-      await staffService.registerStaff(123456, "Yeni Personel", "Karkas Üretimi", "+905551112233", "Personnel", "tr");
+      await staffService.registerStaff(
+        123456,
+        "Yeni Personel",
+        "Karkas Üretimi",
+        "+905551112233",
+        "Personnel",
+        "tr",
+      );
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     });
   });
 

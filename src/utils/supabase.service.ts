@@ -106,9 +106,11 @@ export class SupabaseService {
 
     const crypto = require("crypto");
     // Veritabanında varsa onun ID'sini, yoksa bize gelen ID'yi, o da yoksa yeni bir UUID kullan
-    const staffId = existing 
-      ? existing.id 
-      : (staff.id && staff.id.length > 10 ? staff.id : crypto.randomUUID());
+    const staffId = existing
+      ? existing.id
+      : staff.id && staff.id.length > 10
+        ? staff.id
+        : crypto.randomUUID();
 
     const { data, error } = await this.client.from("staff").upsert(
       {
@@ -186,30 +188,39 @@ export class SupabaseService {
   // --- Reset (TEST ONLY) ---
   async resetDatabase() {
     console.log("🧹 Veritabanı temizleniyor (Sadece test verileri)...");
-    
+
     // 1. Supabase Temizliği
     // Foreign key kısıtlamaları nedeniyle önce order_items sonra orders silinmeli
-    const { error: itemsError } = await this.client.from("order_items").delete().neq("id", "0");
+    const { error: itemsError } = await this.client
+      .from("order_items")
+      .delete()
+      .neq("id", "0");
     if (itemsError) throw itemsError;
 
-    const { error: ordersError } = await this.client.from("orders").delete().neq("id", "0");
+    const { error: ordersError } = await this.client
+      .from("orders")
+      .delete()
+      .neq("id", "0");
     if (ordersError) throw ordersError;
 
-    const { error: visualError } = await this.client.from("visual_memory").delete().neq("id", "0");
+    const { error: visualError } = await this.client
+      .from("visual_memory")
+      .delete()
+      .neq("id", "0");
     if (visualError) throw visualError;
 
     // 2. Yerel "Hayalet" Verilerin Temizliği
     const fs = require("fs");
     const path = require("path");
     const dataDir = path.resolve(process.cwd(), "data");
-    
+
     const filesToClear = [
       "processed_uids.json",
       "verilen_siparisler.log",
       "orders.json",
       "production.json",
       "siparis_arsivi.json",
-      "tasks.json"
+      "tasks.json",
     ];
 
     for (const fileName of filesToClear) {
@@ -217,7 +228,10 @@ export class SupabaseService {
       if (fs.existsSync(filePath)) {
         try {
           if (fileName.endsWith(".json")) {
-            fs.writeFileSync(filePath, fileName === "processed_uids.json" ? "[]" : "{}");
+            fs.writeFileSync(
+              filePath,
+              fileName === "processed_uids.json" ? "[]" : "{}",
+            );
           } else {
             fs.writeFileSync(filePath, "");
           }

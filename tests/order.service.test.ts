@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi, beforeAll } from "vitest";
-import { createMockSupabaseService, createMockOrderRepository, waitFor } from "./mocks";
+import {
+  createMockSupabaseService,
+  createMockOrderRepository,
+  waitFor,
+} from "./mocks";
 
 const mockSupabaseData = {
   instance: null as any,
@@ -55,7 +59,7 @@ vi.mock("../src/services/pdf.service", () => ({
 }));
 
 vi.mock("../src/utils/llm.service", () => {
-  const MockLLMService = function() {
+  const MockLLMService = function () {
     return {
       chat: vi.fn().mockResolvedValue(""),
       chatWithImage: vi.fn().mockResolvedValue(""),
@@ -65,7 +69,7 @@ vi.mock("../src/utils/llm.service", () => {
 });
 
 vi.mock("../src/utils/image-embedding.service", () => {
-  const MockImageEmbeddingService = function() {
+  const MockImageEmbeddingService = function () {
     return {
       generateImageEmbedding: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
     };
@@ -87,7 +91,7 @@ describe("OrderService", () => {
       const result = await orderService.parseAndCreateOrder(
         "Security Alert from Netlify",
         "Your deployment is ready",
-        "test-uid"
+        "test-uid",
       );
 
       expect(result).toBeNull();
@@ -100,7 +104,7 @@ describe("OrderService", () => {
       const result = await orderService.parseAndCreateOrder(
         "Welcome to our service",
         "Subscription billing information",
-        "test-uid"
+        "test-uid",
       );
 
       expect(result).toBeNull();
@@ -189,7 +193,7 @@ describe("OrderService", () => {
       const result = await orderService.generateJobOrderPDF(
         items,
         "Test Customer",
-        "Karkas Üretimi"
+        "Karkas Üretimi",
       );
 
       expect(Buffer.isBuffer(result)).toBe(true);
@@ -210,7 +214,10 @@ describe("OrderService", () => {
       const { OrderService } = await import("../src/utils/order.service");
       const orderService = OrderService.getInstance();
 
-      const translation = orderService.getDeptTranslation("Karkas Üretimi", "ru");
+      const translation = orderService.getDeptTranslation(
+        "Karkas Üretimi",
+        "ru",
+      );
 
       expect(translation).toBeTruthy();
       expect(typeof translation).toBe("string");
@@ -229,15 +236,15 @@ describe("OrderService", () => {
   describe("escapeHTML", () => {
     it("should escape HTML special characters", async () => {
       const { OrderService } = await import("../src/utils/order.service");
-      
+
       const result = OrderService.escapeHTML("<test>&\"'");
-      
+
       expect(result).toBe("&lt;test&gt;&amp;\"'");
     });
 
     it("should return empty string for empty input", async () => {
       const { OrderService } = await import("../src/utils/order.service");
-      
+
       expect(OrderService.escapeHTML("")).toBe("");
     });
   });
@@ -245,9 +252,9 @@ describe("OrderService", () => {
   describe("escapeMarkdown", () => {
     it("should escape markdown special characters", async () => {
       const { OrderService } = await import("../src/utils/order.service");
-      
+
       const result = OrderService.escapeMarkdown("*test*_text_[code]`");
-      
+
       expect(result).toBe("\\*test\\*\\_text\\_\\[code]\\`");
     });
   });

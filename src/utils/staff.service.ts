@@ -49,7 +49,9 @@ export class StaffService {
   private async loadStaffFromSupabase() {
     // TEST MODU: DEV_MODE=true iken yerel staff.json'dan yükle (Supabase unique constraint sorunu için)
     if (process.env.DEV_MODE === "true") {
-      console.log("🧪 [DEV_MODE] Yerel staff.json kullanılıyor (Supabase atlandı)");
+      console.log(
+        "🧪 [DEV_MODE] Yerel staff.json kullanılıyor (Supabase atlandı)",
+      );
       this.loadFromLocalFile();
       return;
     }
@@ -172,11 +174,14 @@ export class StaffService {
 
   public getMarina(): Staff | undefined {
     // Önce isMarina flag'i olan personeli ara
-    const marina = this.staffList.find((s) => s.isMarina === true || s.role === "Coordinator");
+    const marina = this.staffList.find(
+      (s) => s.isMarina === true || s.role === "Coordinator",
+    );
     if (marina) return marina;
 
     // Eğer DB'de yoksa çevre değişkeninden ID ile bulmaya çalış
-    const marinaId = process.env.TELEGRAM_MARINA_ID || process.env.TELEGRAM_BOSS_ID;
+    const marinaId =
+      process.env.TELEGRAM_MARINA_ID || process.env.TELEGRAM_BOSS_ID;
     if (marinaId) {
       return this.getStaffByTelegramId(Number(marinaId));
     }
@@ -233,9 +238,14 @@ export class StaffService {
         error,
       );
       // Supabase olmadan devam: yerel listeye ekle ve kaydet
-      const existingIdx = this.staffList.findIndex((s) => s.telegramId === telegramId);
+      const existingIdx = this.staffList.findIndex(
+        (s) => s.telegramId === telegramId,
+      );
       if (existingIdx >= 0) {
-        this.staffList[existingIdx] = { ...this.staffList[existingIdx], ...staffData };
+        this.staffList[existingIdx] = {
+          ...this.staffList[existingIdx],
+          ...staffData,
+        };
       } else {
         this.staffList.push(staffData as Staff);
       }
@@ -274,10 +284,18 @@ export class StaffService {
       try {
         await this.supabase.upsertStaff(staffData);
       } catch (err) {
-        console.error(`❌ ${name} kaydı sırasında hata, yerele ekleniyor:`, err);
-        const existingIdx = this.staffList.findIndex((s) => s.name === name.toString().trim());
+        console.error(
+          `❌ ${name} kaydı sırasında hata, yerele ekleniyor:`,
+          err,
+        );
+        const existingIdx = this.staffList.findIndex(
+          (s) => s.name === name.toString().trim(),
+        );
         if (existingIdx >= 0) {
-          this.staffList[existingIdx] = { ...this.staffList[existingIdx], ...staffData };
+          this.staffList[existingIdx] = {
+            ...this.staffList[existingIdx],
+            ...staffData,
+          };
         } else {
           this.staffList.push(staffData);
         }
@@ -320,7 +338,10 @@ export class StaffService {
       await this.loadStaffFromSupabase();
       return updatedStaff;
     } catch (err) {
-      console.error("❌ Kayıt Supabase'e tamamlanamadı, yerel listeye alınıyor:", err);
+      console.error(
+        "❌ Kayıt Supabase'e tamamlanamadı, yerel listeye alınıyor:",
+        err,
+      );
       const index = this.staffList.findIndex((s) => s.phone === staff.phone);
       if (index !== -1) {
         this.staffList[index] = updatedStaff;
@@ -336,7 +357,10 @@ export class StaffService {
       try {
         await this.supabase.deleteStaff(telegramId);
       } catch (error) {
-        console.error("❌ Personel DB'den silinemedi (yerel listeden silinmeye devam edilecek):", error);
+        console.error(
+          "❌ Personel DB'den silinemedi (yerel listeden silinmeye devam edilecek):",
+          error,
+        );
       }
       this.staffList.splice(index, 1);
       this.saveToLocalFile();

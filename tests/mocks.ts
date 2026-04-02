@@ -42,4 +42,5 @@ export const createMockImageEmbeddingService = () => ({
   generateImageEmbedding: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
 });
 
-export const waitFor = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export const waitFor = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));

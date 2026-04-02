@@ -6,7 +6,7 @@ dotenv.config();
 async function runReset() {
   console.log("🚀 Veritabanı sıfırlama işlemi başlatılıyor...");
   const supabase = SupabaseService.getInstance();
-  
+
   try {
     await supabase.resetDatabase();
     console.log("✅ İşlem başarıyla tamamlandı.");

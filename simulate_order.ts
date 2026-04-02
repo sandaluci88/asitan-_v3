@@ -48,7 +48,11 @@ const isManualDept = (dept: string) => {
 
 async function simulate() {
   console.log("🚀 Simülasyon başlatılıyor...");
-  const filePath = path.join(process.cwd(), "docs", "SIPARIS FORMU-DENEME SIPARIS.xlsx");
+  const filePath = path.join(
+    process.cwd(),
+    "docs",
+    "SIPARIS FORMU-DENEME SIPARIS.xlsx",
+  );
   if (!fs.existsSync(filePath)) {
     console.error(`❌ Dosya bulunamadı: ${filePath}`);
     return;
@@ -68,11 +72,14 @@ async function simulate() {
     "SIMÜLASYON TEST: " + path.basename(filePath),
     JSON.stringify(promptData, null, 2),
     "sim_" + Date.now().toString(),
-    [{ 
-        filename: path.basename(filePath), 
-        content: fileContent, 
-        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
-    }]
+    [
+      {
+        filename: path.basename(filePath),
+        content: fileContent,
+        contentType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    ],
   );
 
   if (!order) {
@@ -83,13 +90,17 @@ async function simulate() {
   console.log(`✅ Sipariş Kaydedildi: ${order.orderNumber}`);
 
   const autoDepts = Array.from(
-    new Set(order.items.map((i: any) => i.department))
+    new Set(order.items.map((i: any) => i.department)),
   ).filter((d: any) => !isManualDept(d)) as string[];
 
-  const hasManualDepts = order.items.some((i: any) => isManualDept(i.department));
+  const hasManualDepts = order.items.some((i: any) =>
+    isManualDept(i.department),
+  );
 
   console.log(`🔍 Otomatik Birimler: ${autoDepts.join(", ")}`);
-  console.log(`🔍 Manuel Birimler Var mı?: ${hasManualDepts ? "Evet" : "Hayır"}`);
+  console.log(
+    `🔍 Manuel Birimler Var mı?: ${hasManualDepts ? "Evet" : "Hayır"}`,
+  );
 
   // OTOMATİK DAĞITIM (Boyahane dahil)
   if (autoDepts.length > 0) {
@@ -103,10 +114,12 @@ async function simulate() {
       new Set(
         order.items
           .filter((i: any) => isManualDept(i.department))
-          .map((i: any) => i.department as string)
-      )
+          .map((i: any) => i.department as string),
+      ),
     );
-    console.log(`📝 Atama bekleyen (Marina'ya gidecek) birimler: ${deptsToAssign.join(", ")}`);
+    console.log(
+      `📝 Atama bekleyen (Marina'ya gidecek) birimler: ${deptsToAssign.join(", ")}`,
+    );
   }
 
   console.log("🏁 Simülasyon tamamlandı.");
@@ -117,18 +130,22 @@ async function processOrderDistribution(
   images: any[],
   excelRows: any[],
   manualAssignments: Record<string, number> | undefined,
-  targetDepts: string[]
+  targetDepts: string[],
 ) {
   for (const currentDept of targetDepts) {
-    const deptItems = order.items.filter((i: any) => i.department === currentDept);
+    const deptItems = order.items.filter(
+      (i: any) => i.department === currentDept,
+    );
     if (deptItems.length === 0) continue;
 
     try {
       // PDF oluşturma (OrderService içindeki pdfService üzerinden)
-      const pdfBuffer = await (orderService as any).pdfService.generateJobOrderPDF(
+      const pdfBuffer = await (
+        orderService as any
+      ).pdfService.generateJobOrderPDF(
         deptItems,
         order.customerName || "Simülasyon Müşterisi",
-        currentDept
+        currentDept,
       );
 
       let targetIds: number[] = [];
@@ -146,19 +163,25 @@ async function processOrderDistribution(
 
       for (const targetId of targetIds) {
         const staff = staffService.getStaffByTelegramId(targetId);
-        
-        // KRİTİK: Boyahane ve Satınalma için RU zorlaması
-        const lang = (currentDept.toLowerCase() === "satınalma" || currentDept.toLowerCase().includes("boya")) ? "ru" : (staff?.language || "ru");
 
-        console.log(`📤 [DAĞITIM] ${currentDept} -> ID: ${targetId} | Dil: ${lang}`);
-        
+        // KRİTİK: Boyahane ve Satınalma için RU zorlaması
+        const lang =
+          currentDept.toLowerCase() === "satınalma" ||
+          currentDept.toLowerCase().includes("boya")
+            ? "ru"
+            : staff?.language || "ru";
+
+        console.log(
+          `📤 [DAĞITIM] ${currentDept} -> ID: ${targetId} | Dil: ${lang}`,
+        );
+
         await bot.api.sendDocument(
           targetId,
           new InputFile(pdfBuffer, `${currentDept}_Simulasyon.pdf`),
           {
             caption: `📄 🧪 <b>TEST DAĞITIMI</b>\n\n<b>Birim:</b> ${translateDepartment(currentDept, lang)}\n<b>Dil:</b> ${lang}\n\n<i>Bu bir simülasyon mesajıdır.</i>`,
             parse_mode: "HTML",
-          }
+          },
         );
       }
     } catch (err) {

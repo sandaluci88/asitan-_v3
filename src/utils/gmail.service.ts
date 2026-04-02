@@ -105,7 +105,10 @@ export class GmailService {
       const lock = await client.getMailboxLock("INBOX");
       try {
         logger.info("📡 IMAP: INBOX aranıyor (seen: false)...");
-        const searchResult = await client.search({ seen: false }, { uid: true });
+        const searchResult = await client.search(
+          { seen: false },
+          { uid: true },
+        );
         const count = Array.isArray(searchResult) ? searchResult.length : 0;
         logger.info(`🔍 IMAP: ${count} adet okunmamış mesaj bulundu.`);
 
@@ -152,10 +155,7 @@ export class GmailService {
                 });
                 logger.info(`✅ Message ${uid} işlendi ve okundu işaretlendi.`);
               } catch (procError) {
-                logger.error(
-                  { err: procError },
-                  `❌ UID ${uid} işleme hatası`,
-                );
+                logger.error({ err: procError }, `❌ UID ${uid} işleme hatası`);
               }
             }
           }
