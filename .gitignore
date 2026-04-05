@@ -14,6 +14,7 @@ dashboard/out/
 
 # Data & Logs
 *.log
+archive/
 data/orders/
 data/images/
 data/*.json
@@ -27,6 +28,7 @@ data/*.log
 !brainstorming_report.md
 !socratic_check.md
 !docs/
+!kaya/
 
 # Debug
 npm-debug.log*

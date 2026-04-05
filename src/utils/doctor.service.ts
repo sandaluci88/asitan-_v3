@@ -1,11 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { ImapFlow } from "imapflow";
 import OpenAI from "openai";
-import pino from "pino";
 import dotenv from "dotenv";
 
 dotenv.config();
-const logger = pino({ name: "DoctorService" });
 
 export interface DiagnosticResult {
   service: string;

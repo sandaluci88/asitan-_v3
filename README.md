@@ -1,144 +1,27 @@
-# Sandaluci Asistan: Akıllı Üretim Koordinatörü 🚀
+# 🛋️ Sandaluci Ayça (Kaya SDR) - Akıllı Üretim Takip Asistanı
 
-Sandaluci firması için özel olarak tasarlanmış, **Kazakistan merkezli** operasyonlarda **Yalın Kültür (Lean Culture)** ve **Stratejik Hizalama (Hoshin Kanri)** prensiplerini uçtan uca yöneten zeki bir asistan sistemidir.
+Sandaluci Mobilya Fabrikası için geliştirilmiş, Telegram tabanlı, yapay zeka destekli Üretim Takip ve Yönetici Asistanıdır.
 
----
+## 🚀 Temel Özellikler
+- **Akıllı Hafıza (Core Memory):** Soul ve operasyonel kuralların birleştirildiği tek parça hafıza yapısı.
+- **Güçlü Zeka:** Google Gemini 2.0 Pro (Experimental) modeli ile üst düzey analiz ve karar yeteneği.
+- **Otomatik İş Emri Dağıtımı:** Excel üzerinden gelen siparişleri otomatik analiz eder ve Rusça/Resimli olarak ilgili departmanlara dağıtır.
+- **Sıkı Takip Döngüsü:** 
+  - **5 Gün Kuralı:** Teslimata 5 gün kala başlayan ve 3 gün kalana kadar süren günlük periyodik takip.
+  - **24 Saat Kuralı:** Kritik gecikmeleri ve kumaş siparişlerini anlık olarak Marina'ya raporlar.
 
-## 📊 Proje Gelişim Raporu ve Sunum Rehberi
+## 🛠️ Teknoloji Yığını
+- **Çekirdek:** Node.js, TypeScript
+- **Bot Framework:** Grammy (Telegram)
+- **Veritabanı:** Supabase (PostgreSQL)
+- **Yapay Zeka:** OpenAI SDK via OpenRouter (Gemini 2.0 Pro)
+- **Dosya İşleme:** ExcelJS, XlsxUtils
 
-Bu bölüm, projenin başından sonuna kadar geçirdiği evreleri ve teknik başarıları özetler:
-
-### 1. Vizyon ve Başlangıç
-
-- **Hedef:** Kağıt üzerindeki sipariş takibini dijitalize etmek ve departmanlar arası koordinasyonu otomatiğe bağlamak.
-- **Kültür:** Sistemin merkezine "Yalın Üretim" prensipleri (israfı önleme, tam zamanında üretim) yerleştirildi.
-
-### 2. Teknik Evrim Basamakları
-
-- **Aşama 1: Veri Yakalama:** Gmail üzerinden gelen karmaşık sipariş formlarını (Excel/PDF) yapay zeka ile okuma yeteneği eklendi.
-- **Aşama 2: Departman Dağıtımı:** Tek bir siparişi parçalara bölüp; Karkas, Dikişhane ve Döşemehane'ye ilgili kısımları resimli olarak gönderme (Multi-Dept Logic) kuruldu.
-- **Aşama 3: Personel & Verimlilik:** Parça başı (Piecework) takip sistemi ve "Marina" onay mekanizması ile üretim disiplini sağlandı.
-- **Aşama 4: Görsel Hafıza:** Supabase (pgvector) vektör veritabanı ile geçmiş ürün görsellerinden benzerlik araması yapabilen "Görsel Bellek" entegre edildi. Görseller VPS üzerindeki yerel depolama biriminde güvenle saklanır.
-- **Aşama 5: Sesli Komut & Telegram Voice:** Telegram üzerinden gelen sesli mesajları (Voice Message) OpenAI/Grok/Gemini altyapısı ile metne dönüştürüp analiz eden ve ilgili departmanlara not olarak ileten sesli asistan yeteneği kazandırıldı.
-- **Aşama 6: Telegram Excel İşleme (Mart 2026):** Telegram üzerinden gönderilen `.xlsx` ve `.xls` dosyalarını otomatik olarak indiren, `XlsxUtils` ile ayrıştıran ve `OrderService` üzerinden sipariş taslağına dönüştüren uçtan uca dosya işleme akışı entegre edildi.
-- **Aşama 7: Gelişmiş Test Modu & Fallback (Mart 2026):** Departmanlarda kayıtlı personel olmasa bile sistemin tıkanmaması için `StaffService` üzerinden "Otomatik Test Personeli" (Fallback) mantığı eklendi. Tüm dağıtımlar yönetici hesabına yönlendirilerek uçtan uca test imkanı sağlandı.
-- **Aşama 8: Rusça Yerelleştirme & Stabilizasyon (Mart 2026):** Kazakistan bölgesi için tüm raporlar ve PDF iş emirleri **Dual-Language (TR/RU)** formatına geçirildi. `order.service.ts` dosyasındaki syntax hataları giderildi.
-- **Aşama 9: PDF İş Emri & Dashboard Tahliye (Mart 2026):** İş emirlerinin sadece görsel değil, gerçek PDF dosyası olarak iletilmesi sağlandı. Kullanıcı talebi üzerine Dashboard entegrasyonu tamamen askıya alındı.
-- **Aşama 10: Gelişmiş Dil Politikası & Hatırlatıcılar (Mart 2026):** Sistemde Patron (TR) ve Marina/Personel (RU) ayrımı keskinleştirildi. Kumaş/Boya gecikme uyarıları (24 saat kuralı) ve üretim takip soruları tamamen i18n sistemine bağlandı.
-- **Aşama 11: PDF İş Akışı Refaktörü (Mart 2026):** Departman bazlı (Karkas, Metal, Boya) otomatik resimli PDF gönderimi ve manuel departmanlar (Döşeme/Dikiş) için Marina onaylı personel atama süreci optimize edildi.
-- **Aşama 12: Sanal Personel & Test Altyapısı (Mart 2026):** Tüm departmanlar için sanal test personelleri (Personas) oluşturuldu. Test süreçlerini hızlandırmak için tüm birimlerin mesajları Patron ID'sine (Shadowing) yönlendirildi.
-- **Aşama 13: Temiz Mesaj Politikası (Mart 2026):** Mesaj kalabalığını önlemek için ayrı ürün görseli gönderimi kaldırıldı, tüm görsel ve detaylar yüksek kaliteli PDF iş emirlerinde konsolide edildi.
-- **Aşama 14: Kumaş & Özet Raporlama (Mart 2026):** Dağıtım sonunda otomatik "Kumaş Sipariş Formu" (PDF) ve "Genel Sipariş Özet Raporu" (PDF) Marina'ya özel olarak üretilip iletilecek şekilde yapılandırıldı.
-- **Aşama 15: Zamanlanmış Silsile & Sıralı Dağıtım (Mart 2026):** Sipariş dağıtım sürecinde kontrolü artırmak için "20-40-60 Saniye" kuralı getirildi. Otomatik birimler (Karkas, Metal, Boya) 20 saniye sonra, Marina onay butonları 40 saniye sonra, Kumaş PDF'i ise 60 saniye sonra iletilecek şekilde yapılandırıldı. Manuel seçim sonrası final raporu için de +20 saniye gecikme eklendi.
-- **Aşama 16: Gelişmiş Excel Resim Analizi & Temizlik (Mart 2026):** Excel dosyalarından resim çıkarma mantığı (Smart Score) güçlendirildi. Test verilerini hem veritabanından hem de yerel dosyalardan (orders, processed_uids vb.) tamamen temizleyen `cleanup.ts` scripti devreye alındı.
-- **Aşama 17: Plastik Üretim Akışı & Dikişhane Görünürlüğü (Mart 2026):** "Plastik" içeren ürünlerin (Türkçe, Rusça veya İngilizce fark etmeksizin) otomatik olarak Satınalma (Marina) departmanına resimli olarak yönlendirilmesi sağlandı. Dikişhane ve diğer manuel birimler için departman eşleme mantığı (`isManualDept`) güçlendirilerek tüm dil varyasyonlarında tam görünürlük sağlandı.
-- **Aşama 18: Gelişmiş Resim Eşleşme & Scope Fix (Mart 2026):** Excel'den çekilen ürün görsellerinin sipariş kalemleriyle (items) eşleşmesini engelleyen scope shadowing hatası giderildi. `RowIndex` mantığı ile %100- **Aşama 32: Cron Servisi Fallback & Sistem Dayanıklılığı (Mart 2026):** `TELEGRAM_MARINA_ID` tanımlı olmadığında arka plan zamanlanmış görevlerinin (Cron) durmasını engellemek için `CronService` başlatma mantığına `bossId` fallback mekanizması eklendi. Sistem eksik çevresel değişken durumlarında daha esnek hale getirildi.
-- **Aşama 33: Gerçek Zamanlı Dağıtım (Real-Time Pipeline) (Nisan 2026):** Sipariş dağıtım sürecindeki yapay 20/40/60 saniyelik bekleme süreleri (timeouts) kaldırıldı. Analiz biter bitmez PDF iş emirleri ve Marina onay butonları anında (0ms gecikme) iletilecek şekilde asenkron yapıya kavuşturuldu.
-- **Aşama 34: Akıllı ID Fallback & Marina Tanıma (Nisan 2026):** `TELEGRAM_MARINA_ID` çevresel değişkeni boş olduğunda sistemin kilitlenmesini önlemek için otomatik `bossId` (Barış Bey) yönlendirmesi eklendi. Butonlar artık asla "sahipsiz" kalmıyor.
-- **Aşama 35: Cron & JSON Data Fix (Nisan 2026):** `CronService` üzerinde yaşanan `tasks.forEach is not a function` hatası, dinamik görev dosyası (`tasks.json`) okuma mantığının güçlendirilmesi ve her zaman dizi dönen (`Array.isArray`) bir yapıya geçilmesiyle kalıcı olarak çözüldü.
-- **Aşama 36: Gmail IMAP Bağlantı Refaktörü (Nisan 2026):** Gmail IMAP bağlantılarında yaşanan `Can not re-use ImapFlow instance` hatası, singleton yerine her işlemde taze bir `ImapFlow` istemcisi oluşturulmasıyla (createClient) kalıcı olarak çözüldü.
-- **Aşama 37: Veritabanı "Phantom" Görev Temizliği (Nisan 2026):** Veritabanında asılı kalan eski test verileri ve 37 adet sahipsiz görev (phantom tasks) `tmp_clean_db.ts` scripti ile tamamen temizlendi.int .`) ve TypeScript compiler (`npx tsc --noEmit`) denetimlerinden **0 hata (0 error)** ile geçecek şekilde modernize edildi.
-- **Aşama 31: Patron Güvenliği & Ajan Yetenekleri (Mart 2026):** `TELEGRAM_BOSS_ID` birleştirilerek VPS üzerindeki yetki hataları giderildi. `sandaluci_soul.md` güncellenerek Patron'a özel (Barış Bey) etkileşim kuralları ve `/dev` yetkileri tanımlandı. Sisteme AGENTic beceriler (`sandaluci-management.md`) kazandırılarak yapay zeka ajanlarının projeyi daha iyi anlaması sağlandı.
-- **Aşama 32: Cron Servisi Fallback & Sistem Dayanıklılığı (Mart 2026):** `TELEGRAM_MARINA_ID` tanımlı olmadığında arka plan zamanlanmış görevlerinin (Cron) durmasını engellemek için `CronService` başlatma mantığına `bossId` fallback mekanizması eklendi. Sistem eksik çevresel değişken durumlarında daha esnek hale getirildi.
-
-### 3. Bot Stabilitesi & Webhook Mimarisi (Mart 2026)
-
-- **Webhook Geçişi:** Telegram `409 Conflict` çakışmalarını tamamen önlemek için Polling modundan Webhook mimarisine geçildi.
-- **Dashboard Entegrasyonu (ASKIYA ALINDI):** `/api/external` endpoint'i ve dashboard bildirim trafiği kullanıcı talebiyle geçici olarak devre dışı bırakıldı.
-- **Mail Odaklı Teşhis (Doctor):** Sistem sağlığını sadece internet varlığına göre değil, Gmail SMTP (587) ve IMAP (993) portlarına doğrudan TCP bağlantısı kurarak denetleyen gelişmiş ağ tarayıcısı entegre edildi.
-- **Bölgesel Optimizasyon:** Kazakistan VPS sunucularındaki şebeke gecikmeleri için 300ms tolerans eşiği tanımlanarak gereksiz uyarıların önüne geçildi.
-- **Gelişmiş Health Check:** Coolify entegrasyonu için port 3000 üzerinde `/health` ve `/ping` desteği.
-
-### 4. Hybrid Deployment (Netlify & Coolify)
-
-- **Netlify:** Projenin Dashboard/Frontend kısmı için kullanılır. Statik dosyaları ve rapor görüntüleyiciyi barındırır.
-- **Coolify (VPS):** Bot çekirdeği, Gmail servisi ve görsel işleme motoru burada çalışır.
-- **Görsel Senkronizasyon:** Üretilen görseller VPS üzerinde yerel olarak saklanır. Frontend üzerinden erişim için görsellerin Supabase Storage'a taşınması planlanmaktadır (Gelecek Aşama).
+## 📂 Dosya Yapısı
+- `src/`: Uygulama kaynak kodları.
+- `kaya/memory/core_memory.md`: Ayça'nın "Anayasası" ve tek hafıza kaynağı.
+- `archive/`: Geçmiş loglar ve raporlar (Local).
+- `simulate_order.ts`: Üretim simülasyonu ve test aracı.
 
 ---
-
-## 🌟 Öne Çıkan Özellikler
-
-### 1. Hibrit Görsel Depolama & Vektör Hafızası
-
-- **Teknoloji:** Qdrant'tan **Supabase (pgvector)** altyapısına geçiş yapıldı.
-- **Performans:** Vektör aramaları doğrudan ana veritabanı (SQL) üzerinde çalışır (1024-dim).
-- **VPS Depolama:** Orijinal ürün resimleri VPS üzerindeki `data/images` klasöründe saklanır.
-
-### 2. Otomatik & Akıllı Üretim Dağıtımı
-
-- **Multi-Dept Logic:** Sipariş tipi ve departman ihtiyacına göre otomatik iş emri ayrıştırma.
-- **Senkronize Rapor:** Dağıtım raporu tüm birimlere iş emirleri ulaştıktan sonra özet olarak yönetime iletilir.
-
-### 3. Çok Dillilik ve Bölgesel Adaptasyon
-
-- **Dinamik Dil:** Kullanıcının diline göre (Türkçe veya Rusça) otomatik cevap verir.
-- **Kazakistan Operasyonu:** Personelin Rusça, yönetimin çift dilli olduğu yapıya tam uyumludur.
-
-### 4. Güvenlik & İzleme
-
-- **Mükerrer İşlem Önleme:** E-posta UID'leri `processed_uids.json` ile kalıcı olarak depolanır.
-- **Gmail Temizleme (Cleanup):** `clear-gmail.ts` scripti ile gelen kutusundaki tüm test verilerini tek komutla temizleme yeteneği.
-- **Doctor Service (TCP Check):** Sistem sağlığını (Database, LLM, Gmail Portları, Network Latency) anlık denetleyen `/doctor` komutu. Mail portları TCP socket seviyesinde taranır.
-
----
-
-## 🛠️ Teknik Altyapı
-
-- **Model:** OpenRouter üzerinden `google/gemini-2.0-flash-001` (Dünyanın en hızlı ve multimodal yetenekli ses/text işleme modeli).
-- **Veritabanı:** Supabase (SQL & pgvector).
-- **Excel Analizi:** `xlsx` ve `exceljs` kütüphaneleri ile derinlemesine dosya ve resim ayrıştırma.
-- **Arşivleme:** İşlenen sipariş formları `data/orders` altında, görseller ise `data/images` altında.
-- **Takvim Yönetimi:** `gogcli` (v0.12.0) entegrasyonu ile Google Calendar üzerinden tam ajanda yönetimi.
-- **Deployment:** Docker & Coolify (Port 3000 Healthcheck aktif).
-
-## 🚀 Kurulum
-
-1. `.env` dosyasını yapılandırın (Supabase, Telegram, Gmail, OpenRouter).
-2. Supabase projesinde `supabase_schema.sql` dosyasını çalıştırın.
-3. `npm install` ve `npm run build` ile derleyin.
-4. Docker üzerinden yayına alın (Health Check Port: 3000).
-
----
-
----
-
-## 🛠️ Teknik Bakım ve Kritik Uyarılar (MİMARİ KORUMA)
-
-Sistemin stabilitesini korumak ve geçmişte yaşanan hataların tekrarlanmaması için aşağıdaki kurallar **KESİNLİKLE** uygulanmalıdır:
-
-### 1. Singleton (Tekil) Mimari Kuralı
-
-- `OrderService`, `StaffService` ve `CronService` gibi sınıflar **Singleton** yapısındadır.
-- **HATA:** `new OrderService()` şeklinde yeni bir instance oluşturmayın!
-- **DOĞRU:** `OrderService.getInstance()` metodunu kullanın. Bu, veritabanı bağlantılarının ve önbelleğin (cache) tutarlı kalmasını sağlar.
-
-### 2. Ortam Değişkenleri (.env) Güvenliği
-
-- `.env` dosyasındaki API anahtarlarında **asla tırnak işareti (`" "`) kullanmayın**.
-- **Model İsmi:** Her zaman `google/gemini-2.0-flash-001` veya `.env`'de tanımlı güncel modeli kullanın.
-- `APP_URL` güncellenirken sonunda `/` işareti olmamasına dikkat edin.
-
-### 3. Deployment & Build Prosedürü
-
-- Kod push edilmeden önce mutlaka `npx tsc --noEmit` ile TypeScript kontrolü yapılmalıdır.
-- `npm run build` komutu Docker/Coolify üzerinde çalışırken hata veriyorsa, `src/index.ts` üzerindeki tip tanımlamalarını (explicit typing) kontrol edin.
-
-### 4. Hizmet Sağlık Kontrolleri
-
-- `/doctor` komutu sistemin tüm portlarını (Gmail, DB, LLM) TCP seviyesinde tarar. Bir sorun olduğunda ilk bu komutu kullanın.
-- OpenRouter hatalarında `src/utils/test-openrouter.ts` scriptini çalıştırarak anahtarın geçerliliğini manuel doğrulayın.
-
----
-
-## 📅 Gelecek Planları (Yol Haritası / Roadmap)
-
-- **Mimari İyileştirme (Architectural Refactor):** Ana giriş dosyası olan `src/index.ts` üzerinde bulunan klavye oluşturma işlevleri (`keyboard builders`) ve bot buton dinleyicilerinin (`handlers`), kodun kalitesini ve yönetilebilirliğini artırmak amacıyla yapısal olarak ilgili alt klasörlere (örn. `src/utils/keyboard-builder.ts`) ayrılması işlemi ileri bir tarihe planlanarak beklemeye alınmıştır.
-- **Kapsamlı Veri Doğrulaması:** Mevcut durumda kullanılan `Zod` güvenlik/doğrulama katmanının tüm veri giriş noktalarına genişletilmesi (Validation).
-- **Test Kapsamının Artırılması:** `OrderService` ve `StaffService` modülleri başta olmak üzere sistemdeki kritik alanlar için birim testlerin (Unit Tests) yazılması.
-
----
-
-> **Not:** Dashboard entegrasyonu ( `/api/external`) kullanıcı talebiyle askıya alınmıştır. Sistem şu an saf Telegram & Mail Koordinatörü olarak çalışmaktadır.
-
-_SanaSistans: Geleceğin Mobilya Üretim Teknolojisi - 2026_
+_Bu proje Barış Bey'in (Sandaluci) vizyonuyla Ayça tarafından yönetilmektedir._

@@ -70,7 +70,7 @@ export class OpenRouterService {
 
   private loadSystemPrompt(): void {
     const promptPath = path.resolve(
-      process.env.SYSTEM_PROMPT_PATH || "./docs/sandaluci_soul.md",
+      process.env.SYSTEM_PROMPT_PATH || "./kaya/memory/core_memory.md",
     );
     try {
       this.systemPrompt = fs.readFileSync(promptPath, "utf-8");
@@ -117,7 +117,7 @@ export class OpenRouterService {
           this.client.chat.completions.create(
             {
               model: (
-                process.env.OPENROUTER_MODEL || "google/gemini-3-flash-preview"
+                process.env.OPENROUTER_MODEL || "google/gemini-2.0-pro-exp-02-05"
               ).trim(),
               messages,
             },
