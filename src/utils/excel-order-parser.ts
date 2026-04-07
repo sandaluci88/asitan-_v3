@@ -137,7 +137,7 @@ function translateProductName(name: string): string {
     }
   }
 
-  // Eğer hiçbir şey değişmediyse olduğu gibi bırak, değiştiyse [TR] / [RU] yapma (Kullanıcı "boyahane için direkt Rusça" istedi)
+  // Kullanıcı "tüm açıklamalar Rusça" istediği için artık saf Rusça dönüyoruz
   return ruName;
 }
 
@@ -483,15 +483,9 @@ function makeItem(
   imageBuffer?: Buffer,
   imageExtension?: string,
 ): OrderItem {
-  // Departman bazlı ürün ismi çevirisi (Boyahane için RU zorunlu)
-  const isRussianRequired =
-    department === "Boyahane" || department === "Satınalma";
-  const translatedUrunAdi = isRussianRequired
-    ? translateProductName(urunAdi)
-    : urunAdi;
-  const translatedDetails = isRussianRequired
-    ? translateProductionTerm(details)
-    : details;
+  // Artik tüm departmanlar için Rusça zorunlu
+  const translatedUrunAdi = translateProductName(urunAdi);
+  const translatedDetails = translateProductionTerm(details);
 
   return {
     id: `${orderId}_${index}`,
@@ -507,7 +501,9 @@ function makeItem(
     fabricDetails: fabricDetails
       ? { ...fabricDetails, arrived: false }
       : undefined,
-    paintDetails,
+    paintDetails: paintDetails 
+      ? { name: translateProductionTerm(paintDetails.name) } 
+      : undefined,
     imageBuffer,
     imageExtension,
     createdAt: new Date().toISOString(),

@@ -643,7 +643,7 @@ export class OrderService {
       .map((item) => ({
         ...item,
         quantity: quantity, // Yeni miktarı ata
-        details: `[TR] (DAĞITILAN: ${quantity}) / [RU] (РАСПРЕДЕЛЕНО: ${quantity}) - ${item.details || ""}`,
+        details: `(РАСПРЕДЕЛЕНО: ${quantity}) - ${item.details || ""}`,
       }));
 
     // Sipariş numarasını/ismini özelleştir
@@ -925,7 +925,7 @@ export class OrderService {
     const labelDate = t("pdf_date", "ru");
 
     const ruDeptTitle = this.getDeptTranslation(dept, "ru").toUpperCase();
-    let view = `📑 *${ruDeptTitle} / ${dept.toUpperCase()}*\n`;
+    let view = `📑 *${ruDeptTitle}*\n`;
     view += `━━━━━━━━━━━━━━━━━━━━\n`;
     view += `👤 *${labelCustomer}:* ${OrderService.escapeMarkdown(customerName)}\n`;
     view += `📅 *${labelDate}:* ${today} | ${now}\n`;
