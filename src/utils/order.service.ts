@@ -626,6 +626,35 @@ export class OrderService {
   }
 
   /**
+   * Bir siparişi belirli bir personel ve miktar için parçalar (Sub-Order).
+   */
+  public createSubOrderForStaff(
+    originalOrder: OrderDetail,
+    staffName: string,
+    quantity: number,
+    targetDept: string,
+  ): OrderDetail {
+    // Derin kopya oluştur (Resim buffer'larını koruyarak)
+    const subOrder: OrderDetail = { ...originalOrder };
+    
+    // Sadece ilgili departmanın ürünlerini sakla ve miktarlarını güncelle
+    subOrder.items = originalOrder.items
+      .filter((item) => item.department === targetDept)
+      .map((item) => ({
+        ...item,
+        quantity: quantity, // Yeni miktarı ata
+        details: `[TR] (DAĞITILAN: ${quantity}) / [RU] (РАСПРЕДЕЛЕНО: ${quantity}) - ${item.details || ""}`,
+      }));
+
+    // Sipariş numarasını/ismini özelleştir
+    subOrder.orderNumber = `${originalOrder.orderNumber || "X"}-${staffName}`;
+    subOrder.id = `${originalOrder.id}_sub_${Date.now()}`;
+
+    return subOrder;
+  }
+
+
+  /**
    * Doğrudan bir Excel buffer'ını sipariş olarak işler.
    * Barış Bey'den gelen Excel'lerin otomatik sipariş olarak işlenmesi için kullanılır.
    */

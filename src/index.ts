@@ -603,11 +603,25 @@ bot.callbackQuery(/^back_to_draft:(.+)$/, async (ctx) => {
   const remaining = draft.order.items.filter(
     (i: any) => isManualDept(i.department) && !i.assignedWorker,
   );
+
   if (remaining.length === 0) {
     keyboard
       .text("🚀 ЗАПУСТИТЬ ПРОИЗВОДСТВО", `finalize_dist:${draftId}`)
       .row();
   }
+
+  // YENİ: Miktarları Bölüştürme Butonu
+  if (relevantManual.length > 0) {
+    relevantManual.forEach((d) => {
+      keyboard
+        .text(
+          `📊 Bölüştür: ${translateDepartment(d, "ru")}`,
+          `split_mode:${draftId}:${d}`,
+        )
+        .row();
+    });
+  }
+
   keyboard.text("❌ Отменить", `reject_order:${draftId}`);
 
   await ctx.editMessageText(`📝 <b>Черновик заказа</b>\n\n${visualReport}`, {
@@ -616,7 +630,121 @@ bot.callbackQuery(/^back_to_draft:(.+)$/, async (ctx) => {
   });
 });
 
+
+// --- BÖLÜŞTÜRMELİ DAĞITIM (YENİ) ---
+const waitingForSplitInput = new Map<number, { draftId: string, dept: string }>();
+
+bot.callbackQuery(/^split_mode:(.+):(.+)$/, async (ctx) => {
+  const draftId = ctx.match[1];
+  const dept = ctx.match[2];
+  const draft = draftOrderService.getDraft(draftId);
+  
+  if (!draft) return ctx.answerCallbackQuery("❌ Черновик не найден.");
+
+  const staffList = staffService.getStaffByDepartment(dept);
+  const staffNames = staffList.map(s => s.name).join(", ");
+  const totalQty = draft.order.items
+    .filter((i: any) => i.department === dept)
+    .reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
+
+  waitingForSplitInput.set(ctx.from.id, { draftId, dept });
+
+  await ctx.editMessageText(
+    `📊 <b>${dept} Dağıtımı</b>\n` +
+    `Toplam Adet: <b>${totalQty}</b>\n` +
+    `Personeller: <i>${staffNames}</i>\n\n` +
+    `Lütfen miktarları şu formatta girin:\n` +
+    `<code>İsim: Miktar, İsim: Miktar</code>\n\n` +
+    `Örnek: <code>Dikiş Test 1: 15, Dikiş Test 2: 15</code>`,
+    { parse_mode: "HTML" }
+  );
+  await ctx.answerCallbackQuery();
+});
+
+// Marina'nın metin bazlı dağıtımını işleyen handler
+bot.on("message:text", async (ctx, next) => {
+  const waiter = waitingForSplitInput.get(ctx.from.id);
+  if (!waiter) return next();
+
+  const { draftId, dept } = waiter;
+  const draft = draftOrderService.getDraft(draftId);
+  if (!draft) {
+    waitingForSplitInput.delete(ctx.from.id);
+    return ctx.reply("❌ Черновик не найден.");
+  }
+
+  const text = ctx.message.text; // Örn: Dikiş 1: 15, Dikiş 2: 15
+  const parts = text.split(",").map(p => p.trim());
+  
+  const assignments: { staffName: string, qty: number }[] = [];
+  let totalInputQty = 0;
+
+  for (const part of parts) {
+    const match = part.match(/^(.+):\s*(\d+)$/);
+    if (!match) {
+      return ctx.reply(`❌ Format hatalı: "${part}"\nDoğru format: İsim: Miktar, İsim: Miktar`);
+    }
+    const staffName = match[1].trim();
+    const qty = parseInt(match[2]);
+    assignments.push({ staffName, qty });
+    totalInputQty += qty;
+  }
+
+  // Adet Kontrolü
+  const originalDeptQty = draft.order.items
+    .filter((i: any) => i.department === dept)
+    .reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
+
+  if (totalInputQty > originalDeptQty) {
+    return ctx.reply(`⚠️ Girdiğiniz toplam adet (${totalInputQty}), siparişteki toplam adetten (${originalDeptQty}) fazla.`);
+  }
+
+  // Dağıtım İşlemi
+  await ctx.reply("⏳ Dağıtım başlatılıyor, iş emirleri oluşturuluyor...");
+  
+  for (const assign of assignments) {
+    const staff = staffService.getStaffByName(assign.staffName);
+    if (!staff) {
+      await ctx.reply(`⚠️ Personel bulunamadı: ${assign.staffName}. Atlanıyor.`);
+      continue;
+    }
+
+    // Sub-order oluştur ve gönder (Parametre sırası: order, staffName, quantity, dept)
+    const subOrder = orderService.createSubOrderForStaff(
+      draft.order,
+      staff.name,
+      assign.qty,
+      dept
+    );
+    
+    // İş emrini personele gönder (assignedWorker subOrder içinde olduğu için ID'yi otomatik bulur)
+    await processOrderDistribution(
+      subOrder,
+      draft.images || [],
+      draft.excelRows || [],
+      undefined, // manualAssignments yerine internal assignedWorker kullanılır
+      [dept],
+      false
+    );
+
+
+    // Draft içinde bu personelin atamasını (en azından bir tanesini) işaretleyelim ki "Tamam" gibi gözüksün
+    draft.order.items.forEach((item: any) => {
+      if (item.department === dept && !item.assignedWorker) {
+          item.assignedWorker = staff.name; // Basit bir işaretleme
+      }
+    });
+  }
+
+  waitingForSplitInput.delete(ctx.from.id);
+  await ctx.reply(`✅ ${dept} departmanı için dağıtım tamamlandı.`, {
+    reply_markup: new InlineKeyboard().text("⬅️ Geri", `back_to_draft:${draftId}`)
+  });
+});
+
+
 bot.callbackQuery(/^reject_order:(.+)$/, async (ctx) => {
+
   const draftId = ctx.match[1] as string;
   draftOrderService.removeDraft(draftId);
   await ctx.editMessageText("❌ Черновик заказа отменён.");

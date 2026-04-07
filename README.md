@@ -6,6 +6,8 @@ Sandaluci Mobilya Fabrikası için geliştirilmiş, Telegram tabanlı, yapay zek
 - **Akıllı Hafıza (Core Memory):** Soul ve operasyonel kuralların birleştirildiği tek parça hafıza yapısı.
 - **Güçlü Zeka:** Google Gemini 2.0 Pro (Experimental) modeli ile üst düzey analiz ve karar yeteneği.
 - **Otomatik İş Emri Dağıtımı:** Excel üzerinden gelen siparişleri otomatik analiz eder ve Rusça/Resimli olarak ilgili departmanlara dağıtır.
+- **Sanal Personel & Test Modu (YENİ):** Geliştirme aşaması için 6 sanal test personeli (Dikiş, Döşeme, Boya) tanımlandı. Tüm testler tek bir Telegram ID (`1030595483`) üzerinden yönetilebilir.
+- **Miktar Bazlı Bölüştürme (YENİ):** Koordinatör (Marina), bir departmandaki toplam üretimi personeller arasında adet bazlı dağıtabilir (Örn: `Dikiş 1: 15, Dikiş 2: 15`).
 - **Sıkı Takip Döngüsü:** 
   - **5 Gün Kuralı:** Teslimata 5 gün kala başlayan ve 3 gün kalana kadar süren günlük periyodik takip.
   - **24 Saat Kuralı:** Kritik gecikmeleri ve kumaş siparişlerini anlık olarak Marina'ya raporlar.

@@ -1,72 +1,50 @@
 [
   {
-    "id": "f0000000-0000-0000-0000-000000000001",
-    "telegramId": 6030287709,
-    "name": "Marina",
-    "department": "Satınalma",
-    "role": "Coordinator",
-    "phone": null,
-    "language": "ru",
-    "isMarina": true
-  },
-  {
-    "id": "f0000000-0000-0000-0000-000000000002",
-    "telegramId": 6030287709,
-    "name": "Dikişhane Ustası",
-    "department": "Dikişhane",
-    "role": "Personnel",
-    "phone": null,
-    "language": "ru",
-    "isMarina": false
-  },
-  {
-    "id": "f0000000-0000-0000-0000-000000000003",
-    "telegramId": 6030287709,
-    "name": "Döşemehane Ustası",
+    "id": "v-döseme-1",
+    "name": "Döşeme Test 1",
     "department": "Döşemehane",
-    "role": "Personnel",
-    "phone": null,
-    "language": "ru",
-    "isMarina": false
+    "telegramId": 1030595483,
+    "role": "usta",
+    "language": "ru"
   },
   {
-    "id": "f0000000-0000-0000-0000-000000000004",
-    "telegramId": 6030287709,
-    "name": "Karkas Ustası",
-    "department": "Karkas Üretimi",
-    "role": "Personnel",
-    "phone": null,
-    "language": "ru",
-    "isMarina": false
+    "id": "v-döseme-2",
+    "name": "Döşeme Test 2",
+    "department": "Döşemehane",
+    "telegramId": 1030595483,
+    "role": "usta",
+    "language": "ru"
   },
   {
-    "id": "f0000000-0000-0000-0000-000000000005",
-    "telegramId": 6030287709,
-    "name": "Metal Ustası",
-    "department": "Metal Üretimi",
-    "role": "Personnel",
-    "phone": null,
-    "language": "ru",
-    "isMarina": false
+    "id": "v-döseme-3",
+    "name": "Döşeme Test 3",
+    "department": "Döşemehane",
+    "telegramId": 1030595483,
+    "role": "usta",
+    "language": "ru"
   },
   {
-    "id": "f0000000-0000-0000-0000-000000000006",
-    "telegramId": 6030287709,
-    "name": "Boya Ustası",
+    "id": "v-dikis-1",
+    "name": "Dikiş Test 1",
+    "department": "Dikişhane",
+    "telegramId": 1030595483,
+    "role": "usta",
+    "language": "ru"
+  },
+  {
+    "id": "v-dikis-2",
+    "name": "Dikiş Test 2",
+    "department": "Dikişhane",
+    "telegramId": 1030595483,
+    "role": "usta",
+    "language": "ru"
+  },
+  {
+    "id": "v-boya-1",
+    "name": "Boyahane Test 1",
     "department": "Boyahane",
-    "role": "Personnel",
-    "phone": null,
-    "language": "ru",
-    "isMarina": false
-  },
-  {
-    "id": "6f5ca17e-d6fd-41c7-92d9-9d87d5aa2b65",
-    "telegramId": 6030287709,
-    "name": "Barış",
-    "department": "Yönetim",
-    "role": "SuperAdmin",
-    "phone": null,
-    "language": "tr",
-    "isMarina": false
+    "telegramId": 1030595483,
+    "role": "usta",
+    "language": "ru"
   }
 ]
