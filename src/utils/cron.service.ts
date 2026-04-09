@@ -140,7 +140,7 @@ export class CronService {
       { timezone: "Asia/Almaty" },
     );
 
-    // ÜRETİM TAKİP: İş emri dağıtımından 20 gün sonra bitti mi sorgusu (Her gün 10:30)
+    // ÜRETİM TAKİP: Dağıtımdan 5 iş günü sonra personel durum sorgusu (Pazar hariç 10:30)
     cron.schedule(
       "30 10 * * 1-6",
       () => {
@@ -432,8 +432,10 @@ export class CronService {
   }
 
   /**
-   * Üretim Takip: İş emrinden 20 gün sonra, işi alan kişiye "Bitti mi?" butonları gönderir.
-   * Marina Hanım'ın özetini gönderir.
+   * Üretim Takip: Dağıtımdan 5 iş günü sonra personele "Bitti mi?" sorusu.
+   * "Devam ediyor" denilirse her 5 günde bir tekrar sorulur, teslimata kadar.
+   * Tüm personelle RUSÇA iletişim kurulur.
+   * Marina'ya özet gönderilir.
    */
   async checkProductionStatus() {
     try {
@@ -455,14 +457,16 @@ export class CronService {
           continue;
         }
 
-        const workerLang = worker.language || "ru";
+        // Tüm personelle RUSÇA iletişim (Barış Bey hariç — ama o zaten listede yok)
+        const workerLang = "ru";
 
+        // Son hatırlatmadan 5 gün geçmediyse atla
         if (item.lastReminderAt) {
           const lastReminder = new Date(item.lastReminderAt);
           const daysSinceLast = Math.floor(
             (Date.now() - lastReminder.getTime()) / (1000 * 60 * 60 * 24),
           );
-          if (daysSinceLast < 3) continue;
+          if (daysSinceLast < 5) continue;
         }
 
         const questionMsg = t("followup_question", workerLang as any, {

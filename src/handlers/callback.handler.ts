@@ -54,6 +54,7 @@ export class CallbackHandler {
     this.registerSplitInputHandler();
     this.registerRejectOrder();
     this.registerFabricCallbacks();
+    this.registerProductionFollowUpCallbacks();
     this.registerGenericCallback();
   }
 
@@ -555,5 +556,28 @@ export class CallbackHandler {
     this.bot.on("callback_query:data", (ctx) =>
       this.messageHandler.handleCallback(ctx),
     );
+  }
+
+  // --- Üretim Takip Callback'leri (Personel "Bitti mi?" sorusuna yanıt) ---
+  private registerProductionFollowUpCallbacks() {
+    // Personel: EVET, bitti
+    this.bot.callbackQuery(/^production_done:(.+)$/, async (ctx) => {
+      const itemId = ctx.match[1];
+      await this.orderService.updateItemStatus(itemId, "hazir");
+      await ctx.editMessageText(t("followup_noted_done", "ru"));
+      await ctx.answerCallbackQuery();
+    });
+
+    // Personel: HAYIR, devam ediyor
+    this.bot.callbackQuery(/^production_ongoing:(.+)$/, async (ctx) => {
+      const itemId = ctx.match[1];
+      // lastReminderAt güncelle — 5 gün sonra tekrar sorulacak
+      const result = this.orderService.getOrderItemById(itemId);
+      if (result) {
+        await this.orderService.updateLastReminder(result.order.id, itemId);
+      }
+      await ctx.editMessageText(t("followup_noted_ongoing", "ru"));
+      await ctx.answerCallbackQuery();
+    });
   }
 }
