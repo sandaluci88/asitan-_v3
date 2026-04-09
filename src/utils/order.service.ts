@@ -154,6 +154,22 @@ export class OrderService {
 
             await this.repository.save(excelOrder);
 
+            // LLM Çeviri: Türkçe detayları Rusçaya çevir (personel için)
+            try {
+              const detailsToTranslate = excelOrder.items.map((item: any) => item.details || "");
+              const translations = await this.llmService.translateDetailsToRussian(detailsToTranslate);
+              excelOrder.items.forEach((item: any, i: number) => {
+                const translated = translations.get(i);
+                if (translated && translated !== item.details) {
+                  console.log(`🔄 [Çeviri] "${item.details?.substring(0, 40)}..." → "${translated.substring(0, 40)}..."`);
+                  item.details = translated;
+                }
+              });
+              await this.repository.save(excelOrder);
+            } catch (e) {
+              console.warn("⚠️ Detay çevirisi atlandı:", e);
+            }
+
             try {
               await this.saveToVisualMemory(excelOrder);
             } catch (_) {}

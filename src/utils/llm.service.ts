@@ -168,11 +168,24 @@ export class OpenRouterService {
         result.set(i, d || "");
         return;
       }
-      // Zaten çoğunlukla Rusça ise atla
+      // Zaten tamamen Rusça ise atla (Türkçe karakter varsa çevir)
       const russianChars = (d.match(/[а-яА-ЯёЁ]/g) || []).length;
-      const totalChars = d.replace(/[\s\d.,;:|()\-/]/g, "").length;
-      if (totalChars > 0 && russianChars / totalChars > 0.5) {
+      const turkishChars = (d.match(/[çÇğĞıİöÖşŞüÜ]/g) || []).length;
+      const latinLetters = (d.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g) || []).length;
+      // Türkçe özel karakter varsa kesinlikle çevir
+      // Latin harfler Rusça'dan fazla ise ve Türkçe kelime varsa çevir
+      if (turkishChars > 0) {
+        needsTranslation.push({ index: i, text: d });
+        return;
+      }
+      // Tamamen Kiril ise atla
+      if (latinLetters === 0 && russianChars > 0) {
         result.set(i, d);
+        return;
+      }
+      // Karışık (Kiril + Latin) — muhtemelen çeviri gerekiyor
+      if (latinLetters > 0) {
+        needsTranslation.push({ index: i, text: d });
         return;
       }
       needsTranslation.push({ index: i, text: d });
