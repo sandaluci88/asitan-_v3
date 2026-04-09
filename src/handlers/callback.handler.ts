@@ -470,6 +470,7 @@ export class CallbackHandler {
 
   // --- Kumaş Callback'leri ---
   private registerFabricCallbacks() {
+    // Eski: fabric_ok / fabric_fail (geriye uyumlu)
     this.bot.callbackQuery(/^fabric_ok:(.+)$/, async (ctx) => {
       const itemId = ctx.match[1];
       const lang = getUserLanguage((ctx as any).role);
@@ -481,6 +482,70 @@ export class CallbackHandler {
     this.bot.callbackQuery(/^fabric_fail:(.+)$/, async (ctx) => {
       const lang = getUserLanguage((ctx as any).role);
       await ctx.editMessageText(`⚠️ ${t("fabric_fail_msg", lang)}`);
+      await ctx.answerCallbackQuery();
+    });
+
+    // Yeni: Kumaş/Dış Alım hatırlatma butonları (Marina için)
+    const getMarinaLang = () => {
+      const marina = this.staffService.getMarina();
+      return (marina?.language || "ru") as any;
+    };
+
+    // Kumaş/Dış alım GELDİ
+    this.bot.callbackQuery(/^fabric_purchase_ok:(.+)$/, async (ctx) => {
+      const itemId = ctx.match[1];
+      const lang = getMarinaLang();
+
+      const result = this.orderService.getOrderItemById(itemId);
+      if (result) {
+        const isFabricDept =
+          result.item.department.toLowerCase().includes("dikiş") ||
+          result.item.department.toLowerCase().includes("döşeme") ||
+          result.item.department.toLowerCase() === "kumaş";
+
+        if (isFabricDept && result.item.fabricDetails) {
+          result.item.fabricDetails.arrived = true;
+        }
+        if (isFabricDept) {
+          await this.orderService.updateItemStatus(itemId, "uretimde");
+        } else {
+          await this.orderService.updateItemStatus(itemId, "uretimde");
+        }
+        await this.orderService.updateLastReminder(result.order.id, itemId);
+      }
+
+      await ctx.editMessageText(t("fabric_arrived_msg", lang));
+      await ctx.answerCallbackQuery();
+    });
+
+    // Kumaş/Dış alım GELMEDİ
+    this.bot.callbackQuery(/^fabric_purchase_pending:(.+)$/, async (ctx) => {
+      const itemId = ctx.match[1];
+      const lang = getMarinaLang();
+
+      const result = this.orderService.getOrderItemById(itemId);
+      if (result) {
+        await this.orderService.updateLastReminder(result.order.id, itemId);
+      }
+
+      await ctx.editMessageText(t("fabric_not_arrived_msg", lang));
+      await ctx.answerCallbackQuery();
+    });
+
+    // SİPARİŞ VERİLDİ
+    this.bot.callbackQuery(/^fabric_purchase_ordered:(.+)$/, async (ctx) => {
+      const itemId = ctx.match[1];
+      const lang = getMarinaLang();
+
+      const result = this.orderService.getOrderItemById(itemId);
+      if (result) {
+        if (result.item.fabricDetails) {
+          result.item.fabricDetails.arrived = false;
+        }
+        await this.orderService.updateLastReminder(result.order.id, itemId);
+      }
+
+      await ctx.editMessageText(t("fabric_ordered_msg", lang));
       await ctx.answerCallbackQuery();
     });
   }

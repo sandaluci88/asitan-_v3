@@ -6,7 +6,7 @@ import { StaffService } from "./staff.service";
 import { OrderService } from "./order.service";
 import { KenanService } from "./kenan.service";
 import { ProactiveService } from "./proactive.service";
-import { t } from "./i18n";
+import { t, translateDepartment } from "./i18n";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -122,11 +122,11 @@ export class CronService {
       { timezone: "Asia/Almaty" },
     );
 
-    // KUMAŞ TAKİP: Kumaş durumunu günlük kontrol et (Her gün 09:00)
+    // KUMAŞ & DIŞ ALIM TAKİP: Marina'ya hatırlatma (Pazar hariç 09:00)
     cron.schedule(
-      "0 9 * * *",
+      "0 9 * * 1-6",
       () => {
-        this.checkFabricStatus();
+        this.checkFabricAndPurchaseStatus();
       },
       { timezone: "Asia/Almaty" },
     );
@@ -356,61 +356,78 @@ export class CronService {
     }
   }
 
-  async checkFabricStatus() {
-    const orders = this.orderService.getOrders();
-    // ORDER GUARD: Sipariş yoksa kumaş takip atla
-    if (!orders || orders.length === 0) return;
+  async checkFabricAndPurchaseStatus() {
+    try {
+      const pendingItems = this.orderService.getPendingFabricReminders();
+      if (pendingItems.length === 0) return;
 
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    for (const order of orders) {
-      const fabricPendingItems = order.items.filter(
-        (item) =>
-          (item.department === "Dikişhane" || item.department === "Kumaş") &&
-          item.status === "bekliyor" &&
-          new Date(item.updatedAt || item.createdAt).getTime() <
-            twentyFourHoursAgo.getTime(),
-      );
-      for (const item of fabricPendingItems) {
-        const dikişhaneStaff =
-          this.staffService.getStaffByDepartment("Dikişhane");
-        const almira =
-          dikişhaneStaff.find((s) => s.name.toLowerCase().includes("almira")) ||
-          dikişhaneStaff[0];
+      const marina = this.staffService.getMarina();
+      if (!marina || !marina.telegramId) {
+        console.warn("⚠️ Marina bulunamadı, kumaş/dış alım hatırlatması atlanıyor.");
+        return;
+      }
 
-        const lang = almira?.language || "ru";
-        const alertMsg = t("fabric_delay_alert", lang, {
+      const lang = (marina.language || "ru") as any;
+      let message = t("fabric_purchase_reminder", lang);
+
+      const keyboard = new InlineKeyboard();
+      let count = 0;
+
+      for (const { order, item } of pendingItems) {
+        count++;
+        const fabricInfo = item.fabricDetails?.name
+          ? `\n   ${t("dept_fabric", lang)}: ${item.fabricDetails.name}`
+          : "";
+
+        message += t("fabric_purchase_item", lang, {
+          num: String(count),
           customer: order.customerName,
           product: item.product,
-          fabric: item.fabricDetails?.name || t("status_bekliyor", lang),
+          quantity: String(item.quantity),
+          department: translateDepartment(item.department, lang),
+          fabricInfo,
         });
 
-        if (almira && almira.telegramId) {
-          await this.bot.api.sendMessage(almira.telegramId, alertMsg, {
-            parse_mode: "Markdown",
-          });
+        keyboard
+          .text(
+            t("btn_fabric_arrived", lang),
+            `fabric_purchase_ok:${item.id}`,
+          )
+          .text(
+            t("btn_fabric_not_arrived", lang),
+            `fabric_purchase_pending:${item.id}`,
+          )
+          .text(
+            t("btn_fabric_ordered", lang),
+            `fabric_purchase_ordered:${item.id}`,
+          );
+
+        if (count < pendingItems.length) {
+          keyboard.row();
         }
-        const marina = this.staffService.getMarina();
-        if (marina && marina.telegramId) {
-          const marinaLang = marina.language || "ru";
-          const marinaAlert = t("fabric_delay_alert", marinaLang, {
-            customer: order.customerName,
-            product: item.product,
-            fabric:
-              item.fabricDetails?.name || t("status_bekliyor", marinaLang),
-          });
-          await this.bot.api.sendMessage(marina.telegramId, marinaAlert, {
-            parse_mode: "Markdown",
-          });
-        }
+
+        // lastReminderAt güncelle
+        item.lastReminderAt = new Date().toISOString();
+        item.updatedAt = new Date().toISOString();
       }
+
+      await this.bot.api.sendMessage(marina.telegramId, message, {
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+
+      console.log(
+        `🧶 Kumaş/dış alım hatırlatması: ${count} kalem Marina'ya gönderildi.`,
+      );
+    } catch (error) {
+      console.error("❌ Kumaş/dış alım hatırlatma hatası:", error);
     }
   }
 
   async runManualTest() {
     await this.sendMorningBriefing();
     await this.checkPendingMaterials();
-    await this.checkFabricStatus();
+    await this.checkFabricAndPurchaseStatus();
     await this.sendStaffControlMessage("morning");
   }
 

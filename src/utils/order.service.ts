@@ -1012,13 +1012,24 @@ export class OrderService {
     const allOrders = this.repository.getAll();
 
     allOrders.forEach((order) => {
+      if (order.status === "archived" || order.status === "completed") return;
       order.items.forEach((item) => {
+        if (item.status !== "bekliyor") return;
+
         const isFabricDept =
           item.department.toLowerCase().includes("dikiş") ||
           item.department.toLowerCase().includes("döşeme") ||
           item.department.toLowerCase() === "kumaş";
 
-        if (isFabricDept && item.fabricDetails && !item.fabricDetails.arrived) {
+        const isPurchaseDept =
+          item.department.toLowerCase().includes("satın") ||
+          item.department.toLowerCase().includes("purchasing");
+
+        const needsFabricCheck =
+          isFabricDept && item.fabricDetails && !item.fabricDetails.arrived;
+        const needsPurchaseCheck = isPurchaseDept;
+
+        if (needsFabricCheck || needsPurchaseCheck) {
           const lastReminder = item.lastReminderAt
             ? new Date(item.lastReminderAt)
             : new Date(item.distributedAt || item.createdAt);

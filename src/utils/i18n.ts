@@ -357,6 +357,40 @@ const translations: Record<string, Record<Language, string>> = {
     tr: "Personel",
     ru: "Персонал",
   },
+
+  // === Kumaş & Dış Alım Hatırlatma ===
+  fabric_purchase_reminder: {
+    tr: "🧶 <b>Kumaş / Dış Alım Hatırlatma</b>\n\nAşağıdaki kalemlerin durumu hakkında bilgi verir misiniz?",
+    ru: "🧶 <b>Напоминание: Ткань / Закупки</b>\n\nПожалуйста, сообщите статус следующих позиций:",
+  },
+  fabric_purchase_item: {
+    tr: "\n\n{num}. <b>{customer}</b> — {product}\n   Adet: {quantity} | Departman: {department}{fabricInfo}",
+    ru: "\n\n{num}. <b>{customer}</b> — {product}\n   Кол-во: {quantity} | Отдел: {department}{fabricInfo}",
+  },
+  btn_fabric_arrived: {
+    tr: "✅ Geldi",
+    ru: "✅ Пришла",
+  },
+  btn_fabric_not_arrived: {
+    tr: "❌ Gelmedi",
+    ru: "❌ Не пришла",
+  },
+  btn_fabric_ordered: {
+    tr: "📦 Sipariş Verildi",
+    ru: "📦 Заказ оформлен",
+  },
+  fabric_arrived_msg: {
+    tr: "✅ Kumaş/dış alım <b>geldi</b> olarak kaydedildi. İş emirleri iletilecek.",
+    ru: "✅ Отмечено как <b>полученное</b>. Заказы будут отправлены в отделы.",
+  },
+  fabric_not_arrived_msg: {
+    tr: "⏳ Anlaşıldı. Yarın tekrar hatırlatacağım.",
+    ru: "⏳ Понятно. Напомню завтра.",
+  },
+  fabric_ordered_msg: {
+    tr: "📦 Sipariş verildi olarak kaydedildi. Takibe alındı.",
+    ru: "📦 Отмечено как «заказ оформлен». Оставлено на контроле.",
+  },
 };
 
 /**
