@@ -150,4 +150,59 @@ export class OpenRouterService {
       return null;
     }
   }
+
+  /**
+   * Üretim detaylarını Türkçe'den Rusça'ya çevirir.
+   * Tek seferde tüm detayları toplu çevirir (hedef: Rusça personel dokümanları için).
+   */
+  public async translateDetailsToRussian(
+    details: string[],
+  ): Promise<Map<number, string>> {
+    const result = new Map<number, string>();
+    if (!details || details.length === 0) return result;
+
+    // Sadece çeviri gerektiren (Türkçe/Latin) detayları filtrele
+    const needsTranslation: { index: number; text: string }[] = [];
+    details.forEach((d, i) => {
+      if (!d || d.trim() === "") {
+        result.set(i, d || "");
+        return;
+      }
+      // Zaten çoğunlukla Rusça ise atla
+      const russianChars = (d.match(/[а-яА-ЯёЁ]/g) || []).length;
+      const totalChars = d.replace(/[\s\d.,;:|()\-/]/g, "").length;
+      if (totalChars > 0 && russianChars / totalChars > 0.5) {
+        result.set(i, d);
+        return;
+      }
+      needsTranslation.push({ index: i, text: d });
+    });
+
+    if (needsTranslation.length === 0) return result;
+
+    const numbered = needsTranslation
+      .map((item, i) => `${i + 1}. ${item.text}`)
+      .join("\n");
+
+    const prompt = `Переведи следующие производственные заметки на русский язык. Это инструкции для рабочих на фабрике мебели. Переводи технические термины точно (например: karkas → каркас, döşeme → обивка, dikim → шитьё, boya → покраска, ahşap → дерево, sünger → поролон, kumaş → ткань). Сохрани все числа, размеры и артикулы без изменений. Верни ТОЛЬКО переведённые строки с нумерацией, без пояснений:\n\n${numbered}`;
+
+    try {
+      const response = await this.chat(prompt, "Translation");
+      if (!response) {
+        needsTranslation.forEach((item) => result.set(item.index, item.text));
+        return result;
+      }
+
+      const lines = response.split("\n").filter((l) => l.trim());
+      needsTranslation.forEach((item, i) => {
+        const match = lines[i]?.replace(/^\d+\.\s*/, "").trim();
+        result.set(item.index, match || item.text);
+      });
+    } catch (error) {
+      logger.error({ err: error }, "Çeviri hatası, orijinal kullanılıyor.");
+      needsTranslation.forEach((item) => result.set(item.index, item.text));
+    }
+
+    return result;
+  }
 }

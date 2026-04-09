@@ -503,6 +503,21 @@ export class OrderService {
         };
       });
 
+      // LLM Çeviri: Türkçe detayları Rusçaya çevir (personel için)
+      try {
+        const detailsToTranslate = order.items.map((item: any) => item.details || "");
+        const translations = await this.llmService.translateDetailsToRussian(detailsToTranslate);
+        order.items.forEach((item: any, i: number) => {
+          const translated = translations.get(i);
+          if (translated && translated !== item.details) {
+            console.log(`🔄 [Çeviri] "${item.details?.substring(0, 40)}..." → "${translated.substring(0, 40)}..."`);
+            item.details = translated;
+          }
+        });
+      } catch (e) {
+        console.warn("⚠️ Detay çevirisi atlandı:", e);
+      }
+
       await this.repository.save(order);
 
       // Görsel hafıza - Artık ana sipariş DB'de olduğu için güvenle çalışabilir
