@@ -150,4 +150,17 @@ npm test
 
 ---
 
+## Yapılacaklar (Yarın)
+
+- [ ] `.env` dosyasını sunucuda güncelle — Tüm Telegram ID'leri `1030595483` olarak değiştir:
+  - `TELEGRAM_CHAT_ID`
+  - `TELEGRAM_ALLOWLIST_USER_ID`
+  - `TELEGRAM_BOSS_ID`
+  - `TELEGRAM_MARINA_ID`
+- [ ] Sunucuda `git pull` ve restart yap
+- [ ] Split (bölüştürme) dağıtımını test et — Marina "📊 Разделить" butonuna basıp `Almira: 40, Natalya: 20` formatında yazmalı
+- [ ] `DEV_MODE=true` → production'da `false` yapılacak mı karar ver
+
+---
+
 _Bu proje Sandaluci Mobilya Fabrikası için özel olarak geliştirilmiştir._
