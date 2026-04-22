@@ -1,0 +1,41 @@
+{
+  "name": "@sandaluci/bot",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node --watch --loader ts-node/esm src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sandaluci/core": "*",
+    "@sandaluci/wiki": "*",
+    "@sandaluci/kaizen": "*",
+    "grammy": "^1.35.0",
+    "imapflow": "^1.2.10",
+    "mailparser": "^3.9.3",
+    "nodemailer": "^8.0.1",
+    "node-cron": "^3.0.3",
+    "pdfkit": "^0.17.2",
+    "canvas": "^3.2.1",
+    "pdfjs-dist": "^3.11.174",
+    "dotenv": "^16.4.7",
+    "uuid": "^11.1.0",
+    "groq-sdk": "^0.37.0",
+    "node-fetch": "^3.3.2",
+    "form-data": "^4.0.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@types/node": "^22.15.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^6.4.17",
+    "@types/mailparser": "^3.4.6",
+    "@types/pdfkit": "^0.13.9",
+    "@types/uuid": "^10.0.0",
+    "ts-node": "^10.9.2"
+  }
+}

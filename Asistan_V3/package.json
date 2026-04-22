@@ -1,0 +1,24 @@
+{
+  "name": "sandaluci-asistan-v3",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Sandaluci Mobilya AI Yonetici Asistani V3 - Wiki + Kaizen",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev:bot": "npm run dev --workspace=@sandaluci/bot",
+    "dev:dashboard": "npm run dev --workspace=@sandaluci/dashboard",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "gray-matter": "^4.0.3",
+    "vitest": "^4.1.5"
+  }
+}

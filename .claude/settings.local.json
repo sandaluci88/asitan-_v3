@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(rm package-lock.json)",
+      "Bash(rm -rf node_modules)",
+      "Bash(npm run *)",
+      "Bash(git push *)"
+    ]
+  }
+}
