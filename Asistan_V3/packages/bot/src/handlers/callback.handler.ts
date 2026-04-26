@@ -69,9 +69,10 @@ export class CallbackHandler {
         `📋 [SELECT] Departman seçimi: ${deptName} (draft: ${draftId})`,
       );
       const staffList = this.staffService.getStaffByDepartment(deptName);
+      const deptRu = translateDepartment(deptName, "ru");
       if (staffList.length === 0) {
         return ctx.answerCallbackQuery(
-          `⚠️ В отделе ${deptName} нет зарегистрированных сотрудников.`,
+          `⚠️ ${deptRu} — ${t("cb_no_staff", "ru")}`,
         );
       }
 
@@ -79,10 +80,10 @@ export class CallbackHandler {
       staffList.forEach((s) => {
         keyboard.text(s.name, `aw:${draftId}:${deptName}:${s.name}`).row();
       });
-      keyboard.text("🔙 Назад", `back_to_draft:${draftId}`);
+      keyboard.text(`🔙 ${t("cb_back", "ru")}`, `back_to_draft:${draftId}`);
 
       await ctx.editMessageText(
-        `👤 <b>${deptName}</b> — выберите сотрудника:\n\n<i>Выберите имя из списка.</i>`,
+        `👤 <b>${deptRu}</b> ${t("cb_select_worker", "ru")}\n\n<i>${t("cb_select_worker_hint", "ru")}</i>`,
         { parse_mode: "HTML", reply_markup: keyboard },
       );
       await ctx.answerCallbackQuery();
@@ -101,7 +102,15 @@ export class CallbackHandler {
 
       const draft = this.draftOrderService.getDraft(draftId);
       if (!draft)
-        return ctx.answerCallbackQuery("❌ Черновик не найден или истёк.");
+        return ctx.answerCallbackQuery(`❌ ${t("cb_draft_not_found", "ru")}`);
+
+      // Guard: zaten atanmis dept'a tekrar atama yapma
+      const alreadyAssigned = draft.order.items
+        .filter((item: any) => item.department === deptName)
+        .every((item: any) => item.assignedWorker);
+      if (alreadyAssigned) {
+        return ctx.answerCallbackQuery(`✅ ${translateDepartment(deptName, "ru")} — уже назначен`);
+      }
 
       draft.order.items.forEach((item: any) => {
         if (item.department === deptName) {
@@ -111,7 +120,7 @@ export class CallbackHandler {
         }
       });
 
-      await ctx.answerCallbackQuery(`✅ ${staffName} назначен(а).`);
+      await ctx.answerCallbackQuery(`✅ ${staffName} ${t("cb_worker_assigned", "ru")}`);
 
       // HEMEN bu departmana PDF iş emri gönder
       try {
@@ -130,7 +139,7 @@ export class CallbackHandler {
         console.error(`❌ [AW] PDF gönderme hatası (${deptName}):`, err);
       }
 
-      // Kalan manuel departmanları göster
+      // SADECE atanmamis manuel departmanlari goster
       const remainingDepts = Array.from(
         new Set(
           draft.order.items
@@ -139,7 +148,18 @@ export class CallbackHandler {
         ),
       );
 
+      // Atanmis departmanlari listele (mesajda goster, buton yok)
+      const assignedDepts = Array.from(
+        new Set(
+          draft.order.items
+            .filter((i: any) => isManualDept(i.department) && i.assignedWorker)
+            .map((i: any) => i.department),
+        ),
+      );
+
       const keyboard = new InlineKeyboard();
+
+      // Sadece atanmamis departman butonlari
       remainingDepts.forEach((d: any) => {
         keyboard
           .text(
@@ -149,26 +169,26 @@ export class CallbackHandler {
           .row();
       });
 
-      // Bölüştürme butonları (atanmamış manuel departmanlar için)
-      remainingDepts.forEach((d: any) => {
-        keyboard
-          .text(
-            `📊 Разделить: ${translateDepartment(d, "ru")}`,
-            `split_mode:${draftId}:${d}`,
-          )
-          .row();
-      });
-
       if (remainingDepts.length === 0) {
         keyboard
-          .text("🚀 ЗАПУСТИТЬ ПРОИЗВОДСТВО", `finalize_dist:${draftId}`)
+          .text(`🚀 ${t("cb_launch_production", "ru")}`, `finalize_dist:${draftId}`)
           .row();
       }
-      keyboard.text("❌ Отменить", `reject_order:${draftId}`);
+      keyboard.text(`❌ ${t("cb_cancel", "ru")}`, `reject_order:${draftId}`);
 
       const visualReport = this.orderService.generateVisualTable(draft.order);
+
+      // Atanmis dept'leri mesajda goster
+      let assignedInfo = "";
+      if (assignedDepts.length > 0) {
+        assignedInfo = "\n\n✅ " + assignedDepts.map((d) => {
+          const worker = draft.order.items.find((i: any) => i.department === d)?.assignedWorker;
+          return `${translateDepartment(d, "ru")} → <b>${worker}</b>`;
+        }).join("\n✅ ");
+      }
+
       await ctx.editMessageText(
-        `✅ ${deptName} → <b>${staffName}</b> назначен(а). PDF отправлен.\n\n${visualReport}`,
+        `✅ ${translateDepartment(deptName, "ru")} → <b>${staffName}</b> ${t("cb_worker_assigned", "ru")} ${t("cb_pdf_sent", "ru")}${assignedInfo}\n\n${visualReport}`,
         { parse_mode: "HTML", reply_markup: keyboard },
       );
     });
@@ -180,7 +200,7 @@ export class CallbackHandler {
       const draftId = ctx.match[1] as string;
       console.log(`🚀 [FINALIZE] Dağıtım başlatılıyor (draft: ${draftId})`);
       const draft = this.draftOrderService.getDraft(draftId);
-      if (!draft) return ctx.answerCallbackQuery("❌ Черновик не найден.");
+      if (!draft) return ctx.answerCallbackQuery(`❌ ${t("cb_draft_not_found", "ru")}`);
 
       const unassignedManualDepts = Array.from(
         new Set(
@@ -192,11 +212,11 @@ export class CallbackHandler {
 
       if (unassignedManualDepts.length > 0) {
         return ctx.answerCallbackQuery(
-          `⚠️ Сначала назначьте сотрудников: ${unassignedManualDepts.join(", ")}`,
+          `⚠️ ${t("cb_assign_first", "ru")} ${unassignedManualDepts.map((d) => translateDepartment(d as string, "ru")).join(", ")}`,
         );
       }
 
-      await ctx.answerCallbackQuery("🚀 Производство запускается...");
+      await ctx.answerCallbackQuery(`🚀 ${t("cb_production_starting", "ru")}`);
 
       const assignedDepts = Array.from(
         new Set(
@@ -265,7 +285,7 @@ export class CallbackHandler {
     this.bot.callbackQuery(/^auto_distribute:(.+)$/, async (ctx) => {
       const draftId = ctx.match[1] as string;
       const draft = this.draftOrderService.getDraft(draftId);
-      if (!draft) return ctx.answerCallbackQuery("❌ Черновик не найден.");
+      if (!draft) return ctx.answerCallbackQuery(`❌ ${t("cb_draft_not_found", "ru")}`);
 
       const hasManual = draft.order.items.some((i: any) =>
         isManualDept(i.department),
@@ -306,7 +326,7 @@ export class CallbackHandler {
     this.bot.callbackQuery(/^back_to_draft:(.+)$/, async (ctx) => {
       const draftId = ctx.match[1] as string;
       const draft = this.draftOrderService.getDraft(draftId);
-      if (!draft) return ctx.answerCallbackQuery("❌ Черновик не найден.");
+      if (!draft) return ctx.answerCallbackQuery(`❌ ${t("cb_draft_not_found", "ru")}`);
 
       const visualReport = this.orderService.generateVisualTable(draft.order);
       const keyboard = new InlineKeyboard();
@@ -366,7 +386,7 @@ export class CallbackHandler {
       const dept = ctx.match[2];
       const draft = this.draftOrderService.getDraft(draftId);
 
-      if (!draft) return ctx.answerCallbackQuery("❌ Черновик не найден.");
+      if (!draft) return ctx.answerCallbackQuery(`❌ ${t("cb_draft_not_found", "ru")}`);
 
       const staffList = this.staffService.getStaffByDepartment(dept);
       const staffNames = staffList.map((s) => s.name).join(", ");
@@ -433,6 +453,7 @@ export class CallbackHandler {
 
       await ctx.reply("⏳ Dağıtım başlatılıyor, iş emirleri oluşturuluyor...");
 
+      let assignedCount = 0;
       for (const assign of assignments) {
         const staff = this.staffService.getStaffByName(assign.staffName);
         if (!staff) {
@@ -458,11 +479,22 @@ export class CallbackHandler {
           false,
         );
 
-        draft.order.items.forEach((item: any) => {
-          if (item.department === dept && !item.assignedWorker) {
-            item.assignedWorker = staff.name;
-          }
-        });
+        // Only mark the correct number of items as assigned to this worker
+        const deptItems = draft.order.items.filter(
+          (item: any) => item.department === dept && !item.assignedWorker,
+        );
+        for (let i = 0; i < assign.qty && i < deptItems.length; i++) {
+          deptItems[i].assignedWorker = staff.name;
+        }
+        assignedCount += assign.qty;
+      }
+
+      // Warn if not all items were distributed
+      if (totalInputQty < originalDeptQty) {
+        const remaining = originalDeptQty - totalInputQty;
+        await ctx.reply(
+          `⚠️ Dikkat: ${remaining} adet dağıtılmadı. Toplam: ${originalDeptQty}, Dağıtılan: ${totalInputQty}`,
+        );
       }
 
       this.waitingForSplitInput.delete(ctx.from.id);

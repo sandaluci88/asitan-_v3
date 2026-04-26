@@ -139,10 +139,11 @@ export class OrderService {
             for (const existing of recentOrders) {
               if (
                 excelOrder.orderNumber &&
-                existing.orderNumber === excelOrder.orderNumber
+                (existing.orderNumber === excelOrder.orderNumber ||
+                  existing.orderNumber.startsWith(excelOrder.orderNumber + "-"))
               ) {
                 logger.warn(
-                  `Mukerrer siparis (no eslesti): ${excelOrder.orderNumber}`,
+                  `Mukerrer siparis tamamen atlanıyor: ${excelOrder.orderNumber}`,
                 );
                 return { ...existing, isDuplicate: true };
               }
@@ -502,10 +503,11 @@ export class OrderService {
       for (const existing of recentOrders) {
         if (
           excelOrder.orderNumber &&
-          existing.orderNumber === excelOrder.orderNumber
+          (existing.orderNumber === excelOrder.orderNumber ||
+            existing.orderNumber.startsWith(excelOrder.orderNumber + "-"))
         ) {
           logger.warn(
-            `Mukerrer siparis (no eslesti): ${excelOrder.orderNumber}`,
+            `Mukerrer siparis tamamen atlanıyor: ${excelOrder.orderNumber}`,
           );
           return { ...existing, isDuplicate: true };
         }

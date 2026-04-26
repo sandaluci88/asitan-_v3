@@ -1,4 +1,4 @@
-import * as ExcelJS from "exceljs";
+import ExcelJS from "exceljs";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -120,7 +120,211 @@ const PRODUCT_TRANSLATIONS: Record<string, string> = {
   berjer: "Кресло-бержер",
   metal: "Металлический",
   ahsap: "Деревянный",
+  konsol: "Консоль",
+  "tv unit": "ТВ-тумба",
+  "tv unitesi": "ТВ-тумба",
+  dolap: "Шкаф",
+  gardrop: "Гардероб",
+  komodin: "Тумбочка",
+  yatak: "Кровать",
+  "yatak basi": "Изголовье",
+  ayna: "Зеркало",
+  kitaplik: "Книжный шкаф",
+  "yemek masasi": "Обеденный стол",
+  "yemek takimi": "Обеденный гарнитур",
+  "oturma grubu": "Диванный гарнитур",
+  "kose takimi": "Угловой диван",
 };
+
+/**
+ * Renk ve malzeme ceviri sozlugu (Turkce → Rusca)
+ * Boya, kumas, malzeme isimlerini icerir
+ */
+const MATERIAL_TRANSLATIONS: Record<string, string> = {
+  // Renkler
+  "koyu ceviz": "Тёмный орех",
+  "kouy ceviz": "Тёмный орех",
+  "acik ceviz": "Светлый орех",
+  "açık ceviz": "Светлый орех",
+  ceviz: "Орех",
+  beyaz: "Белый",
+  siyah: "Чёрный",
+  krem: "Кремовый",
+  antrasit: "Антрацит",
+  gri: "Серый",
+  bej: "Бежевый",
+  "bej beyaz": "Бежево-белый",
+  bordo: "Бордовый",
+  mavi: "Синий",
+  yesil: "Зелёный",
+  "yeşil": "Зелёный",
+  lacivert: "Тёмно-синий",
+  kirmizi: "Красный",
+  "kırmızı": "Красный",
+  turuncu: "Оранжевый",
+  sari: "Жёлтый",
+  "sarı": "Жёлтый",
+  pembe: "Розовый",
+  mor: "Фиолетовый",
+  altin: "Золотой",
+  "altın": "Золотой",
+  gumus: "Серебряный",
+  "gümüş": "Серебряный",
+  bakir: "Медный",
+  "bakır": "Медный",
+  parlak: "Глянцевый",
+  mat: "Матовый",
+  "ipek mat": "Шёлковисто-матовый",
+  "ipek": "Шёлковый",
+  naturel: "Натуральный",
+  lake: "Лакированный",
+  "yuksek parlak": "Высокий глянец",
+  "yüksek parlak": "Высокий глянец",
+
+  // Agac turu / tonlar
+  meşe: "Дуб",
+  mese: "Дуб",
+  kayin: "Бук",
+  dişbudak: "Ясень",
+  disbudak: "Ясень",
+  cam: "Сосна",
+  ladin: "Ель",
+  huş: "Берёза",
+  karaağaç: "Вяз",
+  karacam: "Кедр",
+  tik: "Тик",
+  "tık": "Тик",
+  abanoz: "Эбеновое дерево",
+  maun: "Красное дерево",
+  wenge: "Венге",
+  zebrano: "Зебрано",
+
+  // Kumas turleri
+  kadife: "Бархат",
+  velvet: "Бархат",
+  "velür": "Велюр",
+  velur: "Велюр",
+  deri: "Кожа",
+  "sun'i deri": "Искусственная кожа",
+  "suni deri": "Искусственная кожа",
+  ekoderi: "Экокожа",
+  "eko deri": "Экокожа",
+  keten: "Лён",
+  pamuk: "Хлопок",
+  polyester: "Полиэстер",
+  mikrofiber: "Микрофибра",
+  sunger: "Поролон",
+  "sünger": "Поролон",
+  felt: "Фетр",
+  "fleece": "Флис",
+  "chiffon": "Шифон",
+  "saten": "Сатин",
+  "twill": "Твил",
+  jakar: "Жаккард",
+  bukle: "Букле",
+  "büküle": "Букле",
+  goblen: "Гобелен",
+  tafta: "Тафта",
+  organze: "Органза",
+
+  // Uretim terimleri
+  "uretim yapilacak": "Произвести",
+  uretim: "Производство",
+  uretilecek: "Произвести",
+  yapilacak: "Произвести",
+  stoktan: "Со склада",
+  stok: "Склад",
+  hazir: "Готово",
+  acil: "СРОЧНО",
+  plastik: "пластик",
+  "plastik sandalye": "пластиковый стул",
+
+  // Uretim detay terimleri
+  sandalye: "стул",
+  ayak: "ножка",
+  ayaklar: "ножки",
+  sirt: "спинка",
+  fanera: "фанера",
+  plaka: "плита",
+  rusteme: "под заказ",
+  "hus agaci": "буковая древесина",
+  "hus agacı": "буковая древесина",
+  basmak: "прессовать",
+  basilacak: "будет прессоваться",
+  guclandir: "укрепить",
+  "ekstra guclandir": "дополнительно укрепить",
+  yapacak: "сделает",
+  "uc sirt": "три спинки",
+  "dort ayak": "четыре ножки",
+  siparis: "заказ",
+  bolumu: "отдел",
+  karkas: "каркас",
+  "karkas bolumu": "каркасный отдел",
+  alinacak: "будет закуплено",
+  "dis alim": "внешняя закупка",
+  "dış alım": "внешняя закупка",
+
+  // Yuzey islem
+  "ahşap": "Дерево",
+  ahsap: "Дерево",
+  boya: "Покраска",
+  cilâ: "Полировка",
+  cila: "Полировка",
+  vernik: "Лак",
+  emprenye: "Пропитка",
+  "lake boya": "Эмаль",
+  "kokusuz boya": "Без запаха",
+  "su bazli": "Водорастворимый",
+  "su bazlı": "Водорастворимый",
+  "sentetik": "Синтетический",
+
+  // Aksiyon/baglac kelimeleri
+  "icin": "для",
+  "ve": "и",
+  "bu": "это",
+  "bunu": "это",
+  "yok": "нет",
+  "cikar": "выход",
+  "bekle": "ждать",
+  "oturak": "сиденье",
+  "dikis": "шитьё",
+  "doseme": "обивка",
+  "gri": "серый",
+  "dis alim": "внешняя закупка",
+  "dış alım": "внешняя закупка",
+  "faneradan": "из фанеры",
+  "ayaklari": "ножки",
+  "ekstra": "дополнительно",
+};
+
+/**
+ * Metni kapsamli sekilde Ruscaya cevirir.
+ * Oncelikle tam eslesme, sonra kismi eslesme dener.
+ */
+function translateMaterial(text: string): string {
+  if (!text) return "";
+  const lower = text.toLowerCase().trim();
+
+  // Tam eslesme
+  if (MATERIAL_TRANSLATIONS[lower]) return MATERIAL_TRANSLATIONS[lower];
+  if (MATERIAL_TRANSLATIONS[text]) return MATERIAL_TRANSLATIONS[text];
+
+  // Kismi eslesme — en uzun eslesmeyi bul
+  let result = text;
+  const entries = Object.entries(MATERIAL_TRANSLATIONS).sort(
+    (a, b) => b[0].length - a[0].length,
+  );
+  for (const [tr, ru] of entries) {
+    if (lower.includes(tr)) {
+      // Boshluk iceren ifadelerde tam eslesme, tek kelimelerde word boundary kullan
+      const hasSpace = tr.includes(" ");
+      const pattern = hasSpace ? tr : `\\b${tr}\\b`;
+      result = result.replace(new RegExp(pattern, "gi"), ru);
+    }
+  }
+
+  return result === text ? text : result;
+}
 
 /**
  * Urun ismini Ruscaya cevirir (veya TR/RU formatina getirir)
@@ -161,52 +365,46 @@ export async function parseOrderExcel(
       fs.writeFileSync(tempFile, bufferOrPath);
       await wb.xlsx.readFile(tempFile);
     }
-  } catch (e) {
-    logger.error({ err: e }, "Excel okunamadi");
-    return null;
-  } finally {
-    if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-  }
 
-  const ws = wb.getWorksheet(1);
-  if (!ws) {
-    logger.error("Worksheet bulunamadi");
-    return null;
-  }
-
-  // -- Form bilgileri --
-  const musteriAdi = cellVal(ws.getRow(2), 2) || "Bilinmiyor";
-  const siparisTarihi = cellVal(ws.getRow(3), 2);
-  const siparisNo = cellVal(ws.getRow(7), 2) || `SD-${Date.now()}`;
-  const teslimTarihi = (() => {
-    for (let r = DATA_START_ROW; r <= ws.rowCount; r++) {
-      const v = cellVal(ws.getRow(r), COL.TESLIM);
-      if (v && v !== "") return v;
+    const ws = wb.getWorksheet(1);
+    if (!ws) {
+      logger.error("Worksheet bulunamadi");
+      return null;
     }
-    return siparisTarihi || "Belirtilmemis";
-  })();
 
-  logger.info(
-    { musteriAdi, siparisNo },
-    "Siparis formu ayristiriliyor (sabit parser)",
-  );
+    // -- Form bilgileri --
+    const musteriAdi = cellVal(ws.getRow(2), 2) || "Bilinmiyor";
+    const siparisTarihi = cellVal(ws.getRow(3), 2);
+    const siparisNo = cellVal(ws.getRow(7), 2) || `SD-${Date.now()}`;
+    const teslimTarihi = (() => {
+      for (let r = DATA_START_ROW; r <= ws.rowCount; r++) {
+        const v = cellVal(ws.getRow(r), COL.TESLIM);
+        if (v && v !== "") return v;
+      }
+      return siparisTarihi || "Belirtilmemis";
+    })();
 
-  // -- Resimleri oku --
-  const imageMap = new Map<number, { buffer: Buffer; extension: string }>();
-  const wsImages = ws.getImages();
+    logger.info(
+      { musteriAdi, siparisNo },
+      "Siparis formu ayristiriliyor (sabit parser)",
+    );
 
-  wsImages.forEach((img) => {
-    const excelImg = wb.getImage(Number(img.imageId));
-    if (!excelImg?.buffer) return;
-    const startRow = Math.floor(img.range.tl.row) + 1;
-    const buf = Buffer.from(excelImg.buffer as unknown as ArrayBuffer);
-    const ext = excelImg.extension || "png";
-    if (!imageMap.has(startRow)) {
-      imageMap.set(startRow, { buffer: buf, extension: ext });
-    }
-  });
+    // -- Resimleri oku (temp dosya hala mevcutken!) --
+    const imageMap = new Map<number, { buffer: Buffer; extension: string }>();
+    const wsImages = ws.getImages();
 
-  logger.info(`${imageMap.size} resim Excel'den okundu`);
+    wsImages.forEach((img) => {
+      const excelImg = wb.getImage(Number(img.imageId));
+      if (!excelImg?.buffer) return;
+      const startRow = Math.floor(img.range.tl.row) + 1;
+      const buf = Buffer.from(excelImg.buffer as unknown as ArrayBuffer);
+      const ext = excelImg.extension || "png";
+      if (!imageMap.has(startRow)) {
+        imageMap.set(startRow, { buffer: buf, extension: ext });
+      }
+    });
+
+    logger.info(`${imageMap.size} resim Excel'den okundu`);
 
   // -- Urun satirlarini isle --
   const orderId = Date.now().toString();
@@ -256,7 +454,7 @@ export async function parseOrderExcel(
               "закупка",
               "alim",
             ];
-            const extra = (not || stokNot || "").trim();
+            const extra = translateMaterial((not || stokNot || "").trim());
             const isRedundant = ALIM_KEYWORDS.some((k) =>
               extra.toLowerCase().includes(k),
             );
@@ -275,17 +473,23 @@ export async function parseOrderExcel(
     }
 
     // -- Karkas / ana departman --
+    const normalizeTr = (s: string) =>
+      s.toLowerCase()
+        .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ş/g, "s").replace(/ç/g, "c")
+        .replace(/ğ/g, "g").replace(/ı/g, "i");
+
     const karkasFlag =
       departmanHam.toLowerCase().includes("karkas") ||
       stokNot.toLowerCase().includes("karkas") ||
-      stokNot.toLowerCase().includes("uretim yapilacak") ||
-      stokNot.toLowerCase().includes("uretilecek");
+      normalizeTr(stokNot).includes("uretim yapilacak") ||
+      normalizeTr(stokNot).includes("uretilecek");
 
     if (karkasFlag) {
+      const boyaRu = translateMaterial(boya);
       const detay = [
-        boya ? `Цвет: ${boya}` : "",
-        translateProductionTerm(stokNot),
-        translateProductionTerm(not),
+        boyaRu ? `Цвет: ${boyaRu}` : "",
+        translateMaterial(stokNot),
+        translateMaterial(not),
         olcu ? `Размер: ${olcu}` : "",
       ]
         .filter(Boolean)
@@ -303,7 +507,7 @@ export async function parseOrderExcel(
           olcu,
           detay,
           undefined,
-          boya ? { name: boya } : undefined,
+          boya ? { name: boyaRu } : undefined,
           imgData?.buffer,
           imgData?.extension,
         ),
@@ -313,6 +517,7 @@ export async function parseOrderExcel(
 
     // -- Boyahane --
     if (!isEmpty(boya)) {
+      const boyaRu = translateMaterial(boya);
       items.push(
         makeItem(
           orderId,
@@ -323,18 +528,19 @@ export async function parseOrderExcel(
           "Boyahane",
           miktar,
           olcu,
-          `Цвет: ${boya}`,
+          `Цвет: ${boyaRu}`,
           undefined,
-          { name: boya },
+          { name: boyaRu },
           imgData?.buffer,
           imgData?.extension,
         ),
       );
-      logger.info(`Boyahane: ${urunAdi} -> ${boya}`);
+      logger.info(`Boyahane: ${urunAdi} -> ${boyaRu}`);
     }
 
     // -- Kumas (Marina icin) --
     if (!isEmpty(kumas)) {
+      const kumasRu = translateMaterial(kumas);
       const kumasMiktar = kumasMt > 0 ? kumasMt * miktar : 0;
       items.push(
         makeItem(
@@ -346,18 +552,20 @@ export async function parseOrderExcel(
           "Kumas",
           miktar,
           olcu,
-          `Ткань: ${kumas}${kumasMiktar > 0 ? ` | Итого: ${kumasMiktar} м` : ""}`,
-          { name: kumas, amount: kumasMiktar },
+          `Ткань: ${kumasRu}${kumasMiktar > 0 ? ` | Итого: ${kumasMiktar} м` : ""}`,
+          { name: kumasRu, amount: kumasMiktar },
           undefined,
           imgData?.buffer,
           imgData?.extension,
         ),
       );
-      logger.info(`Kumas: ${urunAdi} -> ${kumas}`);
+      logger.info(`Kumas: ${urunAdi} -> ${kumasRu}`);
     }
 
     // -- Dikishane --
     if (!isEmpty(dikis)) {
+      const dikisRu = translateMaterial(dikis);
+      const kumasRuForDikis = !isEmpty(kumas) ? translateMaterial(kumas) : undefined;
       items.push(
         makeItem(
           orderId,
@@ -368,9 +576,9 @@ export async function parseOrderExcel(
           "Dikishane",
           miktar,
           olcu,
-          `Шитьё: ${dikis}${ip ? ` | Нить: ${ip}` : ""}`,
-          !isEmpty(kumas)
-            ? { name: kumas, amount: kumasMt * miktar }
+          `Шитьё: ${dikisRu}${ip ? ` | Нить: ${translateMaterial(ip)}` : ""}`,
+          kumasRuForDikis
+            ? { name: kumasRuForDikis, amount: kumasMt * miktar }
             : undefined,
           undefined,
           imgData?.buffer,
@@ -382,6 +590,8 @@ export async function parseOrderExcel(
 
     // -- Dosemehane --
     if (!isEmpty(doseme) || !isEmpty(kumas)) {
+      const dosemeRu = translateMaterial(doseme);
+      const kumasRuForDoseme = !isEmpty(kumas) ? translateMaterial(kumas) : undefined;
       items.push(
         makeItem(
           orderId,
@@ -392,9 +602,9 @@ export async function parseOrderExcel(
           "Dosemehane",
           miktar,
           olcu,
-          `Обивка: ${doseme || kumas}${!isEmpty(kumas) ? ` | Ткань: ${kumas}` : ""}`,
-          !isEmpty(kumas)
-            ? { name: kumas, amount: kumasMt * miktar }
+          `Обивка: ${dosemeRu || kumasRuForDoseme}${kumasRuForDoseme ? ` | Ткань: ${kumasRuForDoseme}` : ""}`,
+          kumasRuForDoseme
+            ? { name: kumasRuForDoseme, amount: kumasMt * miktar }
             : undefined,
           undefined,
           imgData?.buffer,
@@ -413,6 +623,9 @@ export async function parseOrderExcel(
       isEmpty(doseme)
     ) {
       const dept = departmanHam || "Karkas Uretimi";
+      const fallbackDetay = [translateMaterial(stokNot), translateMaterial(not)]
+        .filter(Boolean)
+        .join(" | ");
       items.push(
         makeItem(
           orderId,
@@ -423,7 +636,7 @@ export async function parseOrderExcel(
           dept,
           miktar,
           olcu,
-          [stokNot, not].filter(Boolean).join(" | "),
+          fallbackDetay,
           undefined,
           undefined,
           imgData?.buffer,
@@ -454,11 +667,20 @@ export async function parseOrderExcel(
     {
       itemCount: items.length,
       depts: [...new Set(items.map((i) => i.department))],
+      images: imageMap.size,
     },
     "Sabit parser tamamlandi",
   );
 
+  // Temp dosya islemler BITTIKTEN sonra temizle
+  if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+
   return { order, imageMap };
+  } catch (e) {
+    logger.error({ err: e }, "Excel okunamadi");
+    if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    return null;
+  }
 }
 
 // -- Yardimci: OrderItem olustur --
@@ -477,26 +699,21 @@ function makeItem(
   imageBuffer?: Buffer,
   imageExtension?: string,
 ): OrderItem {
-  const translatedUrunAdi = translateProductName(urunAdi);
-  const translatedDetails = translateProductionTerm(details);
+  const translatedUrunAdi = translateProductName(translateMaterial(urunAdi));
 
   return {
     id: `${orderId}_${index}`,
     product: translatedUrunAdi + (kod ? ` (${kod})` : ""),
     department,
     quantity,
-    details: [translatedDetails, olcu ? `Размер: ${olcu}` : ""]
-      .filter(Boolean)
-      .join(" | "),
+    details,
     source: department === "Satialma" ? "External" : "Production",
     status: "bekliyor",
     rowIndex,
     fabricDetails: fabricDetails
       ? { ...fabricDetails, arrived: false }
       : undefined,
-    paintDetails: paintDetails
-      ? { name: translateProductionTerm(paintDetails.name) }
-      : undefined,
+    paintDetails,
     imageBuffer,
     imageExtension,
     createdAt: new Date().toISOString(),

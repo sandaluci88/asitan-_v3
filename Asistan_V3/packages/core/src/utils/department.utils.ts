@@ -2,15 +2,21 @@ import { translateDepartment } from "./i18n.js";
 
 export const MANUAL_DEPARTMENTS = [
   "Dikişhane", "Döşemehane", "Dikiş", "Döşeme",
+  "Dikishane", "Dosemehane", "Dikis", "Doseme",
   "Швейный цех", "Обивочный цех", "Швейный", "Обивочный",
   "Sewing", "Upholstery",
 ];
 
+const normalizeTr = (s: string) =>
+  s.toLowerCase()
+    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ş/g, "s").replace(/ç/g, "c")
+    .replace(/ğ/g, "g").replace(/ı/g, "i");
+
 export const isManualDept = (dept: string): boolean => {
-  const d = (dept || "").toLowerCase().trim();
+  const d = normalizeTr(dept);
   if (!d) return false;
   return MANUAL_DEPARTMENTS.some((manual) => {
-    const m = manual.toLowerCase();
+    const m = normalizeTr(manual);
     return d.includes(m) || m.includes(d);
   });
 };

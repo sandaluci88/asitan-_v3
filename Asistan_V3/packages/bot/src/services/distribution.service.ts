@@ -1,5 +1,6 @@
 import { Bot, InputFile } from "grammy";
-import { logger, translateDepartment } from "@sandaluci/core";
+import { logger, translateDepartment, t } from "@sandaluci/core";
+import { PDFService } from "./pdf.service.js";
 
 /**
  * Sipariş dağıtım servisi — departmanlara PDF iş emri gönderimi.
@@ -8,6 +9,7 @@ export class DistributionService {
   private bot: Bot;
   private orderService: any;
   private staffService: any;
+  private pdfService: PDFService;
   private bossId: number;
   private marinaId: number;
 
@@ -25,6 +27,7 @@ export class DistributionService {
     this.bot = bot;
     this.orderService = orderService;
     this.staffService = staffService;
+    this.pdfService = PDFService.getInstance();
     this.bossId = bossId;
     this.marinaId = marinaId;
   }
@@ -90,17 +93,16 @@ export class DistributionService {
       if (deptItems.length === 0) continue;
 
       try {
-        const pdfBuffer = await this.orderService.generateJobOrderPDF(
+        const pdfBuffer = await this.pdfService.generateJobOrderPDF(
           deptItems as any[],
           order.customerName || "Bilinmiyor / Неизвестно",
           currentDept,
         );
-        await this.orderService.archivePDF(currentDept, pdfBuffer);
+        await this.pdfService.archivePDF(currentDept, pdfBuffer);
 
-        const safeCustomerName = (order.customerName || "Bilinmiyor")
-          .replace(/[^a-zA-Z0-9]/g, "_")
-          .substring(0, 30);
-        const pdfFileName = `${safeCustomerName}_${currentDept}_Is_Emri.pdf`;
+        const orderNo = (order.orderNumber || "SD").replace(/[^a-zA-Z0-9\-]/g, "");
+        const safeDept = currentDept.replace(/[^a-zA-Z0-9]/g, "_");
+        const pdfFileName = `${orderNo}_${safeDept}_Is_Emri.pdf`;
 
         let targetIds: number[] = [];
 
@@ -118,7 +120,18 @@ export class DistributionService {
         }
 
         if (targetIds.length === 0) {
-          if (manualAssignments && manualAssignments[currentDept]) {
+          // Dis alim / Satialma → ALWAYS Marina
+          const isExternalPurchase =
+            currentDept.toLowerCase().includes("sati") ||
+            currentDept.toLowerCase().includes("satın") ||
+            currentDept.toLowerCase().includes("dış") ||
+            currentDept.toLowerCase().includes("dis") ||
+            currentDept.toLowerCase() === "satialma";
+
+          if (isExternalPurchase) {
+            logger.info(`Dis alim kalemi → Marina'ya: ${translateDepartment(currentDept, "ru")}`);
+            targetIds = this.marinaId ? [this.marinaId] : [this.bossId];
+          } else if (manualAssignments && manualAssignments[currentDept]) {
             targetIds = [manualAssignments[currentDept]];
           } else {
             const departmentalStaffIds = this.staffService
@@ -129,10 +142,10 @@ export class DistributionService {
             if (departmentalStaffIds.length > 0) {
               targetIds = departmentalStaffIds;
             } else {
-              console.log(
-                `⚠️ ${currentDept} için personel yok, Marina'ya gönderiliyor.`,
+              logger.info(
+                `${currentDept} icin personel yok, Marina'ya gonderiliyor.`,
               );
-              targetIds = [this.bossId || this.marinaId];
+              targetIds = [this.marinaId || this.bossId];
             }
           }
         }
@@ -143,18 +156,15 @@ export class DistributionService {
           if (!targetId) continue;
 
           const staff = this.staffService.getStaffByTelegramId(targetId);
-          const lang =
-            currentDept.toLowerCase() === "satınalma" ||
-            currentDept.toLowerCase().includes("boya")
-              ? "ru"
-              : staff?.language || "ru";
+          // PDF iş emirleri her zaman personel için Rusça
+          const lang = "ru";
 
           try {
             await this.bot.api.sendDocument(
               targetId,
               new InputFile(pdfBuffer, pdfFileName),
               {
-                caption: `📄 <b>${translateDepartment(currentDept, lang)}</b> - ${lang === "ru" ? "Заказ на производство" : "İş Emri Dosyası"} (PDF)`,
+                caption: `📄 <b>${translateDepartment(currentDept, lang)}</b> — ${t("pdf_caption", lang)} (PDF)`,
                 parse_mode: "HTML",
               },
             );

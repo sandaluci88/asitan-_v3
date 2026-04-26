@@ -92,7 +92,8 @@ export class GmailPollingService {
 
     logger.info(`📩 Yeni e-posta işleniyor: ${msg.subject} (UID: ${msg.uid})`);
 
-    const emailSummary = `📧 <b>Yeni E-posta</b> \n\n<b>Gönderen:</b> ${this.orderService.escapeHTML ? this.orderService.escapeHTML(msg.from) : msg.from}\n<b>Konu:</b> ${this.orderService.escapeHTML ? this.orderService.escapeHTML(msg.subject) : msg.subject}`;
+    const esc = (s: string) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const emailSummary = `📧 <b>Yeni E-posta</b> \n\n<b>Gönderen:</b> ${esc(msg.from)}\n<b>Konu:</b> ${esc(msg.subject)}`;
     logger.info(`💬 Telegram bildirimi gönderiliyor: ${this.chatId}`);
     try {
       if (this.chatId) {

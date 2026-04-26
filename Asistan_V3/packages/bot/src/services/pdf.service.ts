@@ -1,11 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
-const PDFDocument = require("pdfkit");
-const { createCanvas, registerFont } = require("canvas");
-const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
-import { pathToFileURL } from "url";
+import PDFDocument from "pdfkit";
+import { createCanvas, registerFont } from "canvas";
+import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
+import { pathToFileURL, fileURLToPath } from "url";
 import { t, translateDepartment, logger } from "@sandaluci/core";
 import type { OrderDetail, OrderItem } from "@sandaluci/core";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * PDFService - Handles all PDF generation and rendering operations.
@@ -146,7 +149,7 @@ export class PDFService {
       const colX = [95, 210, 350, 440];
       doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
       doc.fillColor("#000").font(this.boldFont).fontSize(9);
-      doc.text("Фото", colImg, currentY + 5);
+      doc.text(t("pdf_photo_col", "ru"), colImg, currentY + 5);
       doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
       doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
       doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
@@ -158,13 +161,13 @@ export class PDFService {
       const processRows = async () => {
         for (let index = 0; index < order.items.length; index++) {
           const item = order.items[index];
-          const rowHeight = 70;
+          const rowHeight = 90;
           if (currentY + rowHeight > 750) {
             doc.addPage();
             currentY = 30;
             doc.rect(30, currentY, 535, 20).fill("#f2f2f2").stroke("#ccc");
             doc.fillColor("#000").font(this.boldFont).fontSize(9);
-            doc.text("Фото", colImg, currentY + 5);
+            doc.text(t("pdf_photo_col", "ru"), colImg, currentY + 5);
             doc.text(t("pdf_table_product", "ru"), colX[0], currentY + 5);
             doc.text(t("pdf_table_details", "ru"), colX[1], currentY + 5);
             doc.text(t("dept_label", "ru"), colX[2], currentY + 5);
@@ -178,7 +181,7 @@ export class PDFService {
           if (buffer) {
             try {
               doc.image(buffer, colImg - 2, currentY + 5, {
-                fit: [55, 60],
+                fit: [85, 85],
               });
             } catch (e) {
               logger.warn({ err: e }, "PDF image embed failed");
@@ -255,7 +258,7 @@ export class PDFService {
         .font(this.boldFont)
         .fontSize(16)
         .fillColor("#ffffff")
-        .text("ЗАКАЗ ТКАНИ", 30, 45, {
+        .text(t("pdf_fabric_title", "ru"), 30, 45, {
           align: "center",
           width: 535,
         });
@@ -273,7 +276,7 @@ export class PDFService {
 
       doc
         .font(this.boldFont)
-        .text(`№ Заказа: `, 30, currentY + 15, {
+        .text(`${t("order_label", "ru")}: `, 30, currentY + 15, {
           continued: true,
         })
         .font(this.defaultFont)
@@ -310,12 +313,12 @@ export class PDFService {
           if (fabric) {
             doc
               .font(this.boldFont)
-              .text(`Ткань: `, 130, currentY + 35, { continued: true })
+              .text(`${t("pdf_fabric_name", "ru")} `, 130, currentY + 35, { continued: true })
               .font(this.defaultFont)
               .text(fabric.name || "-");
             doc
               .font(this.boldFont)
-              .text(`Количество: `, 130, currentY + 50, {
+              .text(`${t("pdf_fabric_amount", "ru")} `, 130, currentY + 50, {
                 continued: true,
               })
               .font(this.defaultFont)
@@ -478,7 +481,7 @@ export class PDFService {
           .text(`${t("pdf_date", "ru")}: `, 30, currentY + 15, {
             continued: true,
           });
-        doc.font(this.defaultFont).text(new Date().toLocaleDateString("tr-TR"));
+        doc.font(this.defaultFont).text(new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }));
 
         currentY += 45;
 

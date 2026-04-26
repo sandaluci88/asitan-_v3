@@ -65,7 +65,7 @@ describe("i18n: getUserLanguage()", () => {
 describe("i18n: translateDepartment()", () => {
   it("translates known departments to Russian", () => {
     expect(translateDepartment("Karkas Üretimi", "ru")).toContain("каркаса");
-    expect(translateDepartment("Metal Üretimi", "ru")).toContain("Металло");
+    expect(translateDepartment("Metal Üretimi", "ru")).toContain("металлоконструкций");
     expect(translateDepartment("Boyahane", "ru")).toContain("Покрасоч");
     expect(translateDepartment("Dikişhane", "ru")).toContain("Швей");
     expect(translateDepartment("Döşemehane", "ru")).toContain("Обивоч");

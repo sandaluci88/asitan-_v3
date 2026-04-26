@@ -127,12 +127,13 @@ describe("Staff Data Integrity", () => {
     const marina = staff.find((s: any) => s.isMarina);
     expect(marina).toBeTruthy();
     expect(marina.name).toBe("Marina");
-    expect(marina.role).toBe("Coordinator");
+    expect(marina.role).toBe("coordinator");
   });
 
-  it("all staff have Russian language", () => {
+  it("all staff (except boss) have Russian language", () => {
     const staff = JSON.parse(fs.readFileSync("data/staff.json", "utf-8"));
-    for (const s of staff) {
+    const workers = staff.filter((s: any) => s.role !== "boss");
+    for (const s of workers) {
       expect(s.language).toBe("ru");
     }
   });
@@ -140,9 +141,9 @@ describe("Staff Data Integrity", () => {
   it("has staff for key departments", () => {
     const staff = JSON.parse(fs.readFileSync("data/staff.json", "utf-8"));
     const departments = staff.map((s: any) => s.department);
-    expect(departments).toContain("Karkas Üretimi");
+    expect(departments).toContain("Karkas Uretimi");
     expect(departments).toContain("Boyahane");
-    expect(departments).toContain("Döşemehane");
-    expect(departments).toContain("Dikişhane");
+    expect(departments).toContain("Dosemehane");
+    expect(departments).toContain("Dikishane");
   });
 });
