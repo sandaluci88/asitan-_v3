@@ -283,4 +283,275 @@ describe("CallbackHandler", () => {
       );
     });
   });
+
+  // ─────────────────────────────────────────────
+  // FAZ 1: Split Input Handler (A1-A12)
+  // Kaynak: callback.handler.ts satır 413-520
+  // ─────────────────────────────────────────────
+  describe("split_mode input handler (A1-A12)", () => {
+
+    function getTextMessageHandler(): Function {
+      const calls = mockBot._onCalls;
+      for (const call of calls) {
+        if (call[0] === "message:text") return call[1];
+      }
+      throw new Error("No message:text handler found");
+    }
+
+    function createTextCtx(text: string, fromId: number = TEST_MARINA_ID) {
+      return {
+        from: { id: fromId },
+        message: { text },
+        reply: vi.fn(async () => {}),
+        chat: { id: "888888" },
+      } as any;
+    }
+
+    function getReplies(ctx: any): string {
+      return ctx.reply.mock.calls.map((c: any) => typeof c[0] === "string" ? c[0] : "").join(" ");
+    }
+
+    // A1: Split parse — "Almira: 20, X: 20" doğru ayrıştırılır
+    it("A1: parses 'Almira: 20, X: 20' correctly into 2 sub-orders", async () => {
+      const order = createMultiDeptOrder();
+      order.items[4].quantity = 40; // Dikishane item qty=40
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a1", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 20, X: 20");
+      await textHandler(ctx, vi.fn());
+
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledTimes(2);
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledWith(
+        order, "Almira", 20, "Dikishane",
+      );
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledWith(
+        order, "X", 20, "Dikishane",
+      );
+      expect(distService.processOrderDistribution).toHaveBeenCalledTimes(2);
+    });
+
+    // A2: Toplam miktar aşımı → hata mesajı
+    it("A2: rejects total quantity exceeding order quantity", async () => {
+      const order = createMultiDeptOrder();
+      // Dikishane item has qty=5
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a2", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 20, X: 20"); // total 40 > 5
+      await textHandler(ctx, vi.fn());
+
+      const replies = getReplies(ctx);
+      expect(replies).toMatch(/fazla/);
+      expect(distService.processOrderDistribution).not.toHaveBeenCalled();
+    });
+
+    // A3: 0 veya negatif miktar → hata mesajı
+    it("A3: rejects zero quantity", async () => {
+      const order = createMultiDeptOrder();
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a3", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 0");
+      await textHandler(ctx, vi.fn());
+
+      const replies = getReplies(ctx);
+      expect(replies).toMatch(/sıfır veya negatif olamaz/i);
+      expect(distService.processOrderDistribution).not.toHaveBeenCalled();
+    });
+
+    it("A3b: rejects negative quantity (format error)", async () => {
+      const order = createMultiDeptOrder();
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a3b", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: -5");
+      await textHandler(ctx, vi.fn());
+
+      const replies = getReplies(ctx);
+      expect(replies).toMatch(/Format hatalı/i);
+      expect(distService.processOrderDistribution).not.toHaveBeenCalled();
+    });
+
+    // A4: Bilinmeyen personel adı → hata mesajı
+    it("A4: warns about unknown staff and skips", async () => {
+      const order = createMultiDeptOrder();
+      order.items[4].quantity = 20;
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a4", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("UnknownPerson: 10, Almira: 10");
+      await textHandler(ctx, vi.fn());
+
+      const replies = getReplies(ctx);
+      expect(replies).toMatch(/bulunamadı.*UnknownPerson/i);
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledTimes(1);
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledWith(
+        order, "Almira", 10, "Dikishane",
+      );
+    });
+
+    // A5: 1 personele tam miktar atama
+    it("A5: assigns full quantity to single worker", async () => {
+      const order = createMultiDeptOrder();
+      // Dikishane qty=5
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a5", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 5");
+      await textHandler(ctx, vi.fn());
+
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledTimes(1);
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledWith(
+        order, "Almira", 5, "Dikishane",
+      );
+      expect(distService.processOrderDistribution).toHaveBeenCalledTimes(1);
+    });
+
+    // A6: 3+ personele bölme (Hasan:10, Zhagir:20, Aleksi:20)
+    it("A6: splits across 3 workers (Hasan: 10, Zhagir: 20, Aleksi: 20)", async () => {
+      const order = createMultiDeptOrder();
+      order.items[5].quantity = 50; // Dosemehane qty=50
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a6", dept: "Dosemehane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Hasan: 10, Zhagir: 20, Aleksi: 20");
+      await textHandler(ctx, vi.fn());
+
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledTimes(3);
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledWith(
+        order, "Hasan", 10, "Dosemehane",
+      );
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledWith(
+        order, "Zhagir", 20, "Dosemehane",
+      );
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledWith(
+        order, "Aleksi", 20, "Dosemehane",
+      );
+    });
+
+    // A7: Rusça isimle dağıtım (Альмира: 15, Х: 15)
+    it("A7: handles Cyrillic staff name input (warnings for unknown)", async () => {
+      const order = createMultiDeptOrder();
+      order.items[4].quantity = 30;
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a7", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      // Cyrillic names won't match Latin staff names in DB
+      const ctx = createTextCtx("Альмира: 15, Х: 15");
+      await textHandler(ctx, vi.fn());
+
+      const replies = getReplies(ctx);
+      // Both Cyrillic names should generate warnings
+      expect(replies).toMatch(/bulunamadı.*Альмира/i);
+      expect(replies).toMatch(/bulunamadı.*Х/i);
+      // Split completes even when all staff unknown
+      expect(replies).toMatch(/tamamlandı/i);
+      // No sub-orders created since names don't match
+      expect(orderService.createSubOrderForStaff).not.toHaveBeenCalled();
+    });
+
+    // A8: Her personele ayrı PDF gider
+    it("A8: each worker gets separate processOrderDistribution call", async () => {
+      const order = createMultiDeptOrder();
+      order.items[4].quantity = 40;
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a8", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 20, X: 20");
+      await textHandler(ctx, vi.fn());
+
+      // Verify distribution was called for EACH worker
+      expect(distService.processOrderDistribution).toHaveBeenCalledTimes(2);
+      expect(distService.processOrderDistribution).toHaveBeenCalledWith(
+        expect.anything(), [], [], undefined, ["Dikishane"], false,
+      );
+    });
+
+    // A9: Split sonrası waitingForSplitInput temizlenir
+    it("A9: clears waitingForSplitInput after successful split", async () => {
+      const order = createMultiDeptOrder();
+      order.items[4].quantity = 10;
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a9", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 5, X: 5");
+      await textHandler(ctx, vi.fn());
+
+      expect(handler.waitingForSplitInput.has(TEST_MARINA_ID)).toBe(false);
+
+      const replies = getReplies(ctx);
+      expect(replies).toMatch(/tamamlandı/i);
+    });
+
+    // A10: Döşemehane split — 3 kişiye bölme
+    it("A10: Dosemehane split with 3 workers", async () => {
+      const order = createMultiDeptOrder();
+      order.items[5].quantity = 50; // Dosemehane qty=50
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a10", dept: "Dosemehane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Hasan: 20, Zhagir: 15, Aleksi: 15");
+      await textHandler(ctx, vi.fn());
+
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledTimes(3);
+      const replies = getReplies(ctx);
+      expect(replies).toMatch(/tamamlandı/i);
+    });
+
+    // A11: Dikishane split — 2 kişiye bölme
+    it("A11: Dikishane split with 2 workers", async () => {
+      const order = createMultiDeptOrder();
+      order.items[4].quantity = 50; // Dikishane qty=50
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a11", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 25, X: 25");
+      await textHandler(ctx, vi.fn());
+
+      expect(orderService.createSubOrderForStaff).toHaveBeenCalledTimes(2);
+      expect(distService.processOrderDistribution).toHaveBeenCalledTimes(2);
+    });
+
+    // A12: Aynı personele 2 kez atama engeli
+    it("A12: rejects duplicate staff assignment", async () => {
+      const order = createMultiDeptOrder();
+      order.items[4].quantity = 40;
+      draftService.getDraft.mockReturnValue({ order, images: [], excelRows: [] });
+
+      handler.waitingForSplitInput.set(TEST_MARINA_ID, { draftId: "draft_a12", dept: "Dikishane" });
+
+      const textHandler = getTextMessageHandler();
+      const ctx = createTextCtx("Almira: 20, Almira: 20");
+      await textHandler(ctx, vi.fn());
+
+      const replies = getReplies(ctx);
+      expect(replies).toMatch(/birden fazla kez atama yapılamaz/i);
+      expect(distService.processOrderDistribution).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -437,8 +437,21 @@ export class CallbackHandler {
         }
         const staffName = match[1].trim();
         const qty = parseInt(match[2]);
+        if (qty <= 0) {
+          return ctx.reply(
+            `❌ Miktar sıfır veya negatif olamaz: "${part}"`,
+          );
+        }
         assignments.push({ staffName, qty });
         totalInputQty += qty;
+      }
+
+      const staffNames = assignments.map((a) => a.staffName.toLowerCase());
+      const duplicates = staffNames.filter((name, idx) => staffNames.indexOf(name) !== idx);
+      if (duplicates.length > 0) {
+        return ctx.reply(
+          `❌ Aynı personele birden fazla kez atama yapılamaz: "${duplicates[0]}"`,
+        );
       }
 
       const originalDeptQty = draft.order.items

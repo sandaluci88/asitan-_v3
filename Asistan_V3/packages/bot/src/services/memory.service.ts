@@ -10,13 +10,13 @@ export interface MemoryMessage {
 export class MemoryService {
   private memoryDir: string;
   private archiveDir: string;
-  private maxAgeMs: number; // 3 days
+  private maxAgeMs: number; // 7 days
   private drafts: Map<string, any> = new Map();
 
   constructor() {
     this.memoryDir = path.join(process.cwd(), "data", "memory");
     this.archiveDir = path.join(this.memoryDir, "archive");
-    this.maxAgeMs = 3 * 24 * 60 * 60 * 1000;
+    this.maxAgeMs = 7 * 24 * 60 * 60 * 1000;
   }
 
   async initialize() {
