@@ -29,6 +29,8 @@ data/*.log
 !socratic_check.md
 !docs/
 !memory/core_memory.md
+!Asistan_V3/vault/**
+
 
 # Debug
 npm-debug.log*
