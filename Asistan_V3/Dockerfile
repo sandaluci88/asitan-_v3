@@ -7,7 +7,12 @@ COPY tsconfig.base.json ./
 COPY packages/ packages/
 
 RUN npm install
-RUN npm run build
+
+# Build in dependency order: core → wiki → kaizen → bot
+RUN npm run build --workspace=@sandaluci/core
+RUN npm run build --workspace=@sandaluci/wiki
+RUN npm run build --workspace=@sandaluci/kaizen
+RUN npm run build --workspace=@sandaluci/bot
 
 FROM node:20-bookworm-slim
 
