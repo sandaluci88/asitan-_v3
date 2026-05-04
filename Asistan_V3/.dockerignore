@@ -3,7 +3,8 @@ dist
 .env
 .git
 .gitignore
-*.md
+README.md
+CLAUDE.md
 data/
 tests/
 doc/

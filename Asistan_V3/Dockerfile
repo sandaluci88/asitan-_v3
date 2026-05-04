@@ -36,7 +36,9 @@ COPY --from=builder /app/packages/bot/dist packages/bot/dist
 COPY --from=builder /app/packages/wiki/dist packages/wiki/dist
 COPY --from=builder /app/packages/kaizen/dist packages/kaizen/dist
 
-RUN mkdir -p vault/wiki vault/raw vault/schema
+COPY vault/ vault/
+
+RUN mkdir -p vault/raw vault/schema
 
 EXPOSE 3000
 
