@@ -3,16 +3,10 @@ FROM node:20-bookworm AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY packages/core/package.json packages/core/
-COPY packages/bot/package.json packages/bot/
-COPY packages/wiki/package.json packages/wiki/
-COPY packages/kaizen/package.json packages/kaizen/
-
-RUN npm install
-
 COPY tsconfig.base.json ./
 COPY packages/ packages/
 
+RUN npm install
 RUN npm run build
 
 FROM node:20-bookworm-slim
