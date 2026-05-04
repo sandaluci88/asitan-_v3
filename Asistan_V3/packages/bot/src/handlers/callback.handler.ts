@@ -182,8 +182,8 @@ export class CallbackHandler {
       let assignedInfo = "";
       if (assignedDepts.length > 0) {
         assignedInfo = "\n\n✅ " + assignedDepts.map((d) => {
-          const worker = draft.order.items.find((i: any) => i.department === d)?.assignedWorker;
-          return `${translateDepartment(d, "ru")} → <b>${worker}</b>`;
+          const worker = draft.order.items.find((i: any) => i.department === d)?.assignedWorker as string | undefined;
+          return `${translateDepartment(d as string, "ru")} → <b>${worker}</b>`;
         }).join("\n✅ ");
       }
 
