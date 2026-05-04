@@ -33,7 +33,13 @@
       "Bash(echo '[]')",
       "Bash(rm -rf data/orders/2026-04-23)",
       "Bash(rm -rf data/drafts/*)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(sed -i '177s/.*/├── ayca-agent-scenarios.test.ts  Ayça Agent 100 Senaryo \\(137 test\\)/' README.md)",
+      "Bash(sed -i \"186a\\\\\\\\│   └── Senaryo 84–100  Belgeye göre departman & iş akışı \\(yonetim calisması.md\\)\" README.md)",
+      "Bash(powershell *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git status *)"
     ]
   }
 }

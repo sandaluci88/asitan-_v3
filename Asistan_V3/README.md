@@ -174,6 +174,17 @@ npm run test
 
 ```
 tests/
+├── ayca-agent-scenarios.test.ts  Ayça Agent 100 Senaryo (137 test)
+│   ├── Senaryo 1–10   Temel akışlar (malzeme, sipariş, e-posta, hatırlatma…)
+│   ├── Senaryo 11–20  Gelişmiş akışlar (çoklu departman, Marina, edge case…)
+│   ├── Senaryo 21–27  Keyword çakışma önceliği
+│   ├── Senaryo 28–35  Servis hata yolları
+│   ├── Senaryo 36–45  Eksik keyword çeşitlemeleri
+│   ├── Senaryo 46–53  Boş veri / edge case
+│   ├── Senaryo 54–56  Sesli mesaj yönlendirme
+│   ├── Senaryo 57–67  Rusça personel iletişim
+│   └── Senaryo 68–83  Personel günlük malzeme talepleri (TR+RU)
+│   └── Senaryo 84–100  Belgeye göre departman & iş akışı (yonetim calisması.md)
 ├── callback-handler.test.ts      Callback handler birim testleri
 ├── distribution.test.ts          Dağıtım servis testleri
 ├── distribution-rules.test.ts    Dağıtım kural testleri
@@ -189,6 +200,46 @@ tests/
 ├── real-excel-pdf.test.ts        Gerçek Excel+PDF entegrasyon testi
 ├── fixtures/                     Test veri dosyaları
 └── helpers/                      Mock ve yardımcı modüller
+```
+
+### Ayça Agent Senaryo Testleri
+
+**Toplam:** 100 senaryo, 137 test
+
+| # | Kategori | Senaryolar | Test Adedi |
+|---|----------|-----------|------------|
+| 1–10 | Temel Akışlar | Malzeme talebi, sipariş sorgu, e-posta, hatırlatma, yetki, order guard, Excel, sesli mesaj, gerekini yap | 29 |
+| 11–20 | Gelişmiş Akışlar | Çoklu departman, Marina rolü, case duyarlılığı, bozuk veri, multi-turn, mention, birleşik senaryo, contact kayıt, rapor formatı | 28 |
+| 21–27 | Keyword Çakışma Önceliği | Production vs email, production vs hatırlatma, email vs status, gerekini vs production | 7 |
+| 28–35 | Servis Hata Yolları | Gmail false, LLM null, voice exception, order null, fallback mesajlar | 8 |
+| 36–45 | Keyword Çeşitlemeleri | mail at, e-posta, alarm kur, haber ver, sipariş ver, almamız lazım, hangi aşamada, var mı | 10 |
+| 46–53 | Boş Veri / Edge Case | Sadece keyword, undefined alanlar, archived sipariş, dosya adı yok | 8 |
+| 54–56 | Sesli Mesaj Yönlendirme | Voice → email, voice → hatırlatma, voice → sipariş sorgu | 3 |
+| 57–67 | **Rusça Personel İletişim** | нужен, закончилась, отправь email, напомни, yetki kontrolleri, voice Rusça | 11 |
+| 68–83 | Personel Günlük Talepler | Sünger bitti, kumaş gelmedi, ürün yok, tükendi, kalmadı + Rusça karşılıkları | 16 |
+| 84–100 | Belgeye Göre Departman & İş Akışı | Metal, Dekorasyon, Döşemehane, Paketleme, Sevkiyat mention, Marina satın alma, üretim safhaları | 17 |
+
+### Dil Desteği (Keyword Matching)
+
+Handler Türkçe + Rusça keyword'leri aynı anda destekler:
+
+| Akış | Türkçe | Rusça |
+|------|--------|-------|
+| Malzeme Talebi | lazım, bitti, eksik, sipariş ver | нужен, нужна, нужно, закончился, не хватает |
+| E-posta | mail gönder, mail at, e-posta | отправь email, отправить почту |
+| Hatırlatma | hatırlat, alarm kur, haber ver | напомни, будильник, напоминание |
+
+Çalıştırma:
+
+```bash
+# Tüm testler
+npm run test
+
+# Sadece Ayça senaryo testleri
+npx vitest run tests/ayca-agent-scenarios.test.ts
+
+# İzleme modu
+npx vitest watch tests/ayca-agent-scenarios.test.ts
 ```
 
 ---
