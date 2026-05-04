@@ -69,7 +69,7 @@ export class GmailService {
    * Yeni bir ImapFlow istemcisi oluşturur.
    */
   private createClient(): ImapFlow {
-    return new ImapFlow({
+    const client = new ImapFlow({
       host: "imap.gmail.com",
       port: 993,
       secure: true,
@@ -82,6 +82,13 @@ export class GmailService {
         rejectUnauthorized: false,
       },
     });
+
+    // Prevent unhandled socket errors from crashing the process
+    client.on("error", (err: Error) => {
+      logger.error({ err }, "❌ IMAP: Client error event (suppressed)");
+    });
+
+    return client;
   }
 
   /**

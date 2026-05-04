@@ -230,7 +230,7 @@ const callbackHandler = new CallbackHandler(
 callbackHandler.register();
 
 // ─── Gmail Polling ─────────────────────────────────────────────
-if (process.env.GMAIL_ENABLED !== "false") {
+if (process.env.GMAIL_ENABLED === "true") {
   try {
     const gmailPolling = new GmailPollingService(
       bot,
@@ -247,6 +247,8 @@ if (process.env.GMAIL_ENABLED !== "false") {
   } catch (err) {
     logger.warn({ err }, "Gmail polling baslatilamadi");
   }
+} else {
+  logger.info("Gmail polling devre disi (GMAIL_ENABLED != true)");
 }
 
 // ─── Health Check Server ───────────────────────────────────────
