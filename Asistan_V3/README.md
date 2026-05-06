@@ -1,97 +1,96 @@
-# Sandaluci Asistan V3 — Akıllı Üretim Takip Asistanı
+# Sandaluci Asistan V3 — Ayca
 
 ![Version](https://img.shields.io/badge/version-3.0-blue.svg)
-![Status](https://img.shields.io/badge/status-production--ready-green.svg)
-![AI](https://img.shields.io/badge/AI-Gemini_2.0_Pro-orange.svg)
+![Status](https://img.shields.io/badge/status-production-green.svg)
+![AI](https://img.shields.io/badge/AI-Gemini_2.5_Pro-orange.svg)
 
-Sandaluci Mobilya Fabrikası için geliştirilmiş, Telegram tabanlı, yapay zeka destekli üretim takip ve yönetici asistanı. V3, npm workspaces monorepo mimarisiyle yeniden yapılandırılmıştır.
+Sandaluci Mobilya Fabrikası icin gelistirilmis, Telegram tabanli, yapay zeka destekli uretim takip ve yonetici asistani. V3, npm workspaces monorepo mimarisiyle yeniden yapilandirilmistir.
 
 ---
 
-## Mimari Yapı
+## Mimari Yapi
 
 ```
 Asistan_V3/
 ├── packages/
-│   ├── core/          → @sandaluci/core — Paylaşılan kütüphane
-│   │   ├── models/         Zod şemaları ve TypeScript tipleri
-│   │   ├── repositories/   Supabase veri katmanı
-│   │   ├── services/       Excel parser, LLM, sipariş, personel servisleri
-│   │   └── utils/          Departman, i18n, xlsx yardımcıları
+│   ├── core/          → @sandaluci/core — Paylasilan kutuphane
+│   │   ├── models/         Zod semalari ve TypeScript tipleri
+│   │   ├── repositories/   Supabase veri katmani
+│   │   ├── services/       Excel parser, LLM, siparis, personel servisleri
+│   │   └── utils/          Departman, i18n, xlsx yardimcilari
 │   ├── bot/           → @sandaluci/bot — Telegram bot (Grammy)
-│   │   ├── handlers/       Callback, command, message handler'ları
-│   │   ├── services/       Dağıtım, Gmail polling, PDF, cron, voice
-│   │   └── middleware/     Bot middleware katmanı
-│   ├── wiki/          → @sandaluci/wiki — İkinci Beyin (LLM Wiki motoru)
-│   ├── kaizen/        → @sandaluci/kaizen — Prompt self-improvement
-│   └── dashboard/     → @sandaluci/dashboard — Next.js web panel
+│   │   ├── handlers/       Callback, command, message handler'lari
+│   │   └── services/       Dagitim, Gmail polling, PDF, cron, voice
+│   ├── wiki/          → @sandaluci/wiki — Ikinci Beyin (LLM Wiki motoru)
+│   └── kaizen/        → @sandaluci/kaizen — Prompt self-improvement
 ├── vault/             → Wiki dosya deposu
-│   ├── raw/                Ham kaynak dosyaları
-│   ├── wiki/               İşlenmiş wiki sayfaları
-│   └── schema/             Wiki şema kuralları
+│   ├── raw/                Ham kaynak dosyalari
+│   ├── wiki/               Islenmis wiki sayfalari + Ayca persona
+│   └── schema/             Wiki sema kurallari
+├── data/              → Calisma zamani verileri (staff.json, orders.json)
 ├── tests/             → Test suite (Vitest)
-├── supabase_schema_v3.sql  → Veritabanı şeması
-└── Dockerfile              → Docker deployment
+├── supabase_schema_v3.sql  → Veritabani semasi
+└── Dockerfile              → Docker deployment (multi-stage)
 ```
 
 ---
 
-## Öne Çıkan Özellikler
+## One Cikan Ozellikler
 
-### Sipariş Akışı
+### Siparis Akisi
 
-1. **Gmail Entegrasyonu** — Her 60 saniyede okunmamış mailler kontrol edilir
-2. **Excel/Text Parse** — LLM ile sipariş departmanlara otomatik ayrılır
-3. **Manuel/Otomatik Dağıtım** — Dikişhane/Döşemehane manuel, diğerleri otomatik
-4. **Split Mode** — Marina'nın miktar bazlı personel dağıtımı
-5. **PDF İş Emirleri** — Her departmana Rusça PDF gönderimi
+1. **Gmail Entegrasyonu** — Her 60 saniyede okunmamis mailler kontrol edilir
+2. **Excel/Text Parse** — LLM ile siparis departmanlara otomatik ayrilir
+3. **Manuel/Otomatik Dagitim** — Dikishane/Dosemehane manuel, digerleri otomatik
+4. **Split Mode** — Marina'nin miktar bazli personel dagitimi
+5. **PDF Is Emirleri** — Her departmana Rusca PDF gonderimi
 
 ### Takip Sistemi
 
-- **5-3 Gün Uyarı** — Teslimata yaklaştıkça periyodik hatırlatmalar
-- **Kumaş Takibi** — 24 saatte bir kumaş durumu kontrolü
-- **Üretim Takibi** — 20 gün sonra "Bitti mi?" sorgusu
-- **Sabah/Akşam Brifingi** — Personel kontrol mesajları
+- **5-3 Gun Uyari** — Teslimata yakinlastikca periyodik hatirlatmalar
+- **Kumas Takibi** — 24 saatte bir kumas durumu kontrolu
+- **Uretim Takibi** — Dagitimdan 5 is gunu sonra "Bitti mi?" sorgusu
+- **Sabah/Aksam Brifingi** — Haftaici 08:30 ve 18:00 brifingler
+- **Heartbeat** — 06:00-20:00 arasi her saat basi sistem kontrolu
 
-### AI Güvenlik (Hallucination Prevention)
+### AI Guvenlik (Hallucination Prevention)
 
-- **Context Grounding** — Her mesajda aktif sipariş adedi LLM'e somut veri olarak sunulur
-- **Order Guard** — Aktif sipariş yoksa hayali veri üretimi engellenir
-- **Status Query** — Doğal dil soruları DB sorgusuyla yanıtlanır
+- **Context Grounding** — Her mesajda aktif siparis adedi LLM'e somut veri olarak sunulur
+- **Order Guard** — Aktif siparis yoksa hayali veri uretimi engellenir
+- **Status Query** — Dogal dil sorulari DB sorgusuyla yanitlanir
 
-### Wiki (İkinci Beyin)
+### Wiki (Ikinci Beyin)
 
-- Etkileşimler otomatik wiki'ye kaydedilir
-- `vault/wiki/index.md` üzerinden bilgi erişimi
-- LLM destekli sorgulama ve güncelleme
+- Etkilesimler otomatik wiki'ye kaydedilir
+- `vault/wiki/index.md` uzerinden bilgi erisimi
+- Ayca persona: `vault/wiki/persona/ayca-core-memory.md`
 
 ### Kaizen (Self-Improvement)
 
-- Her LLM çağrısı `KaizenTracker` ile izlenir
-- Günlük orüntü tespiti ve prompt optimizasyonu
-- Prompt versiyonları veritabanında izlenir
+- Her LLM cagrisi `KaizenTracker` ile izlenir
+- Gunluk oruntu tespiti ve prompt optimizasyonu
+- Prompt versiyonlari veritabaninda izlenir
 
-### Dil ve Yerelleştirme
+### Dil ve Yerellestirme
 
-- %100 Rusça üretim dokümanları (personel için)
-- Türkçe patron arayüzü (Barış Bey için)
-- Çift dilli ürün adları `[TR] ... / [RU] ...`
+- %100 Rusca uretim dokumanlari (personel icin)
+- Turkce patron arayuzu (Baris Bey icin)
+- Cift dilli urun adlari `[TR] ... / [RU] ...`
 
 ---
 
-## Teknoloji Yığını
+## Teknoloji Yigini
 
 | Katman     | Teknoloji                              |
 | ---------- | -------------------------------------- |
 | Runtime    | Node.js 20 + TypeScript (ESM)          |
 | Monorepo   | npm workspaces                         |
 | Telegram   | Grammy Framework                       |
-| Veritabanı | Supabase (PostgreSQL + pgvector)       |
-| AI Engine  | OpenRouter (Gemini 2.0 Pro / Qwen 3.5) |
-| Excel      | ExcelJS + Özel XlsxUtils               |
+| Veritabani | Supabase (PostgreSQL)                  |
+| AI Engine  | OpenRouter (Gemini 2.5 Pro)            |
+| Excel      | ExcelJS + Ozel XlsxUtils               |
 | PDF        | PDFKit                                 |
 | Email      | imapflow + nodemailer                  |
-| Dashboard  | Next.js 15 + React 19                  |
 | Validation | Zod                                    |
 | Test       | Vitest                                 |
 | Loglama    | Pino                                   |
@@ -101,22 +100,19 @@ Asistan_V3/
 ## Kurulum
 
 ```bash
-# Bağımlılıkları yükle
+# Bagimliliklari yukle
 npm install
 
-# .env dosyasını oluştur
+# .env dosyasini olustur
 cp .env.example .env
 
-# Geliştirme modunda çalıştır
+# Gelistirme modunda calistir
 npm run dev:bot
-
-# Dashboard geliştirme
-npm run dev:dashboard
 
 # Production build
 npm run build
 
-# Tip kontrolü
+# Tip kontrolu
 npm run typecheck
 
 # Test
@@ -125,137 +121,100 @@ npm run test
 
 ---
 
-## Ortam Değişkenleri
+## Ortam Degiskenleri
 
-| Değişken                    | Açıklama                       |
+| Degisken                    | Aciklama                       |
 | --------------------------- | ------------------------------ |
 | `TELEGRAM_BOT_TOKEN`        | Telegram Bot API token         |
-| `TELEGRAM_CHAT_ID`          | Varsayılan sohbet ID           |
-| `TELEGRAM_BOSS_ID`          | Barış Bey'in Telegram ID       |
-| `TELEGRAM_MARINA_ID`        | Marina'nın Telegram ID         |
-| `OPENROUTER_API_KEY`        | OpenRouter API anahtarı        |
-| `OPENROUTER_MODEL`          | Kullanılacak LLM modeli        |
+| `TELEGRAM_CHAT_ID`          | Varsayilan sohbet ID           |
+| `TELEGRAM_BOSS_ID`          | Baris Bey'in Telegram ID       |
+| `TELEGRAM_MARINA_ID`        | Marina'nin Telegram ID         |
+| `OPENROUTER_API_KEY`        | OpenRouter API anahtari        |
+| `OPENROUTER_MODEL`          | Kullanilacak LLM modeli        |
 | `SUPABASE_URL`              | Supabase proje URL             |
-| `SUPABASE_KEY`              | Supabase API anahtarı          |
+| `SUPABASE_KEY`              | Supabase API anahtari          |
+| `GMAIL_ENABLED`             | Gmail polling aktif/pasif      |
 | `GMAIL_USER` / `GMAIL_PASS` | Gmail IMAP bilgileri           |
-| `SYSTEM_PROMPT_PATH`        | Ayça'nın sistem prompt dosyası |
+| `SYSTEM_PROMPT_PATH`        | Ayca'nin sistem prompt dosyasi |
 
 ---
 
-## Bot Komutları
+## Bot Komutlari
 
-| Komut       | Yetki  | Açıklama               |
+| Komut       | Yetki  | Aciklama               |
 | ----------- | ------ | ---------------------- |
-| `/start`    | Herkes | Bot tanıtımı           |
-| `/durum`    | Patron | Üretim durumu raporu   |
-| `/ajanda`   | Patron | Takvim ajandası        |
+| `/start`    | Herkes | Bot tanitimi           |
+| `/durum`    | Patron | Uretim durumu raporu   |
+| `/ajanda`   | Patron | Takvim ajandasi        |
 | `/personel` | Patron | Personel listesi       |
-| `/kayit`    | Patron | Yeni personel kaydı    |
+| `/kayit`    | Patron | Yeni personel kaydi    |
 | `/sil`      | Patron | Personel silme         |
-| `/takip`    | Patron | Üretim takip özeti     |
-| `/doctor`   | Patron | Sistem sağlık kontrolü |
-| `/temizlik` | Patron | Veritabanı temizleme   |
-| `/dev`      | Patron | Geliştirici modu       |
+| `/takip`    | Patron | Uretim takip ozeti     |
+| `/doctor`   | Patron | Sistem saglik kontrolu |
+| `/temizlik` | Patron | Veritabani temizleme   |
+| `/dev`      | Patron | Gelistirici modu       |
+| `/kaizen`   | Patron | Kaizen durumu          |
+| `/test_briefing` | Patron | Test brifingi     |
 
 ---
 
-## Organizasyon Yapısı
+## Organizasyon Yapisi
 
-| Rol                 | Yetkili          | Tanım                              |
+| Rol                 | Yetkili          | Tanim                              |
 | ------------------- | ---------------- | ---------------------------------- |
-| **SuperAdmin**      | Barış Bey        | Sistem sahibi, tam yetkili         |
-| **Koordinatör**     | Marina           | Üretim trafiğini yönetir           |
-| **Dijital Asistan** | Ayça             | AI üretim asistanı                 |
-| **Departmanlar**    | Atölye Personeli | Karkas, Metal, Boya, Döşeme, Dikiş |
+| **SuperAdmin**      | Baris Bey        | Sistem sahibi, tam yetkili         |
+| **Koordinator**     | Marina           | Uretim trafagini yonetir           |
+| **Dijital Asistan** | Ayca             | AI uretim asistani                 |
+| **Departmanlar**    | Atope Personeli  | Karkas, Metal, Boya, Doseme, Dikis |
 
 ---
 
-## Test Suite
-
-```
-tests/
-├── ayca-agent-scenarios.test.ts  Ayça Agent 100 Senaryo (137 test)
-│   ├── Senaryo 1–10   Temel akışlar (malzeme, sipariş, e-posta, hatırlatma…)
-│   ├── Senaryo 11–20  Gelişmiş akışlar (çoklu departman, Marina, edge case…)
-│   ├── Senaryo 21–27  Keyword çakışma önceliği
-│   ├── Senaryo 28–35  Servis hata yolları
-│   ├── Senaryo 36–45  Eksik keyword çeşitlemeleri
-│   ├── Senaryo 46–53  Boş veri / edge case
-│   ├── Senaryo 54–56  Sesli mesaj yönlendirme
-│   ├── Senaryo 57–67  Rusça personel iletişim
-│   └── Senaryo 68–83  Personel günlük malzeme talepleri (TR+RU)
-│   └── Senaryo 84–100  Belgeye göre departman & iş akışı (yonetim calisması.md)
-├── callback-handler.test.ts      Callback handler birim testleri
-├── distribution.test.ts          Dağıtım servis testleri
-├── distribution-rules.test.ts    Dağıtım kural testleri
-├── excel-parser-strict.test.ts   Excel parser sıkı testler
-├── excel-connections.test.ts     Excel bağlantı testleri
-├── e2e-pipeline.test.ts          Uçtan uca pipeline testi
-├── gmail-polling.test.ts         Gmail polling testleri
-├── i18n-department.test.ts       Çeviri/departman testleri
-├── order-integrity.test.ts       Sipariş bütünlük testleri
-├── pdf-quality.test.ts           PDF kalite testleri
-├── pdf-russian-only.test.ts      Rusça PDF testleri
-├── tracking-rules.test.ts        Takip kural testleri
-├── real-excel-pdf.test.ts        Gerçek Excel+PDF entegrasyon testi
-├── fixtures/                     Test veri dosyaları
-└── helpers/                      Mock ve yardımcı modüller
-```
-
-### Ayça Agent Senaryo Testleri
-
-**Toplam:** 100 senaryo, 137 test
-
-| # | Kategori | Senaryolar | Test Adedi |
-|---|----------|-----------|------------|
-| 1–10 | Temel Akışlar | Malzeme talebi, sipariş sorgu, e-posta, hatırlatma, yetki, order guard, Excel, sesli mesaj, gerekini yap | 29 |
-| 11–20 | Gelişmiş Akışlar | Çoklu departman, Marina rolü, case duyarlılığı, bozuk veri, multi-turn, mention, birleşik senaryo, contact kayıt, rapor formatı | 28 |
-| 21–27 | Keyword Çakışma Önceliği | Production vs email, production vs hatırlatma, email vs status, gerekini vs production | 7 |
-| 28–35 | Servis Hata Yolları | Gmail false, LLM null, voice exception, order null, fallback mesajlar | 8 |
-| 36–45 | Keyword Çeşitlemeleri | mail at, e-posta, alarm kur, haber ver, sipariş ver, almamız lazım, hangi aşamada, var mı | 10 |
-| 46–53 | Boş Veri / Edge Case | Sadece keyword, undefined alanlar, archived sipariş, dosya adı yok | 8 |
-| 54–56 | Sesli Mesaj Yönlendirme | Voice → email, voice → hatırlatma, voice → sipariş sorgu | 3 |
-| 57–67 | **Rusça Personel İletişim** | нужен, закончилась, отправь email, напомни, yetki kontrolleri, voice Rusça | 11 |
-| 68–83 | Personel Günlük Talepler | Sünger bitti, kumaş gelmedi, ürün yok, tükendi, kalmadı + Rusça karşılıkları | 16 |
-| 84–100 | Belgeye Göre Departman & İş Akışı | Metal, Dekorasyon, Döşemehane, Paketleme, Sevkiyat mention, Marina satın alma, üretim safhaları | 17 |
-
-### Dil Desteği (Keyword Matching)
-
-Handler Türkçe + Rusça keyword'leri aynı anda destekler:
-
-| Akış | Türkçe | Rusça |
-|------|--------|-------|
-| Malzeme Talebi | lazım, bitti, eksik, sipariş ver | нужен, нужна, нужно, закончился, не хватает |
-| E-posta | mail gönder, mail at, e-posta | отправь email, отправить почту |
-| Hatırlatma | hatırlat, alarm kur, haber ver | напомни, будильник, напоминание |
-
-Çalıştırma:
-
-```bash
-# Tüm testler
-npm run test
-
-# Sadece Ayça senaryo testleri
-npx vitest run tests/ayca-agent-scenarios.test.ts
-
-# İzleme modu
-npx vitest watch tests/ayca-agent-scenarios.test.ts
-```
-
----
-
-## Dağıtım (Deployment)
-
-Docker ile dağıtım için `Dockerfile` mevcuttur. PDF üretimi için `canvas` kütüphanesi C++ ve Cairo bağımlılıkları gerektirir. `Dockerfile` içerisinde `pkg-config` ve `build-essential` paketleri bulunur.
+## Deployment
 
 ```bash
 # Docker build
-docker build -t sandaluci-asistan .
+docker build -t sandaluci-v3 .
 
 # Docker run
-docker run -d --env-file .env sandaluci-asistan
+docker run -d \
+  --name sandaluci-v3 \
+  --restart unless-stopped \
+  -p 3002:3000 \
+  --env-file .env \
+  sandaluci-v3
 ```
+
+### VPS (Production)
+
+| Ozellik | Deger |
+|---------|-------|
+| Sunucu  | 5.182.33.26 (sanasistanv2.turklawai.com) |
+| Port    | 3002 → 3000 |
+| Container | `sandaluci-v3` (tek instance) |
+| Health  | `GET /health` → `{"status":"ok","version":"3.0.0"}` |
 
 ---
 
-_Bu proje Sandaluci Mobilya Fabrikası için özel olarak geliştirilmiştir._
+## Changelog
+
+### 2026-05-06 — Gmail + Crash Fix + Full Deploy
+
+- **Gmail Aktif**: Yeni App Password ile IMAP baglantisi kuruldu. `GMAIL_ENABLED=true`
+- **orderService Crash Fix**: `CronService.getInstance()` cagrisina `staffService` ve `orderService` parametreleri eklendi
+- **Null Guard**: Tum `orderService` cagrilari icin undefined kontrolu eklendi (CronService, ProactiveService)
+- **IMAP Timeout**: `connectionTimeout: 15000` ve `socketTimeout: 30000` eklendi
+- **Container Cleanup**: Eski V2 container'lari ve duplicate instance'lar silindi
+- **V3 Docker Image**: Multi-stage build ile vault dosyalari dahil edildi
+- **Wiki/Ayca Persona**: Container icinde `ayca-core-memory.md` mevcut ve yuklu
+
+### 2026-05-04 — Production Deploy & Bug Fixes
+
+- **IMAP Crash Fix**: ImapFlow client'a `error` event listener eklendi
+- **Gmail Opt-in**: `GMAIL_ENABLED=true` olmadan Gmail polling baslamiyor
+- **Vault Git'e Eklendi**: 18 wiki dosyasi Git'e eklendi
+- **Dockerfile Vault Destegi**: `COPY vault/ vault/` ile image icine wiki dosyalari dahil edildi
+- **SUPABASE_KEY Fix**: Coolify env'deki bosluk hatasi giderildi
+
+---
+
+_Bu proje Sandaluci Mobilya Fabrikasi icin ozel olarak gelistirilmistir._

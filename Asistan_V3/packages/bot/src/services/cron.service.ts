@@ -33,6 +33,20 @@ export class CronService {
   private tasksFile = path.resolve("./data/tasks.json");
   private activeDynamicJobs: Map<string, cron.ScheduledTask> = new Map();
 
+  /** Sistemde aktif siparis varsa true. Yoksa cron job'lar calismaz. */
+  private hasActiveOrders(): boolean {
+    try {
+      if (!this.orderService) return false;
+      const orders = this.orderService.getOrders?.();
+      if (!orders || !Array.isArray(orders)) return false;
+      return orders.some(
+        (o: any) => o.status !== "archived" && o.status !== "completed",
+      );
+    } catch {
+      return false;
+    }
+  }
+
   private constructor(bot: Bot, chatId: string | number, staffService: any, orderService: any) {
     this.bot = bot;
     this.targetChatId = chatId;
@@ -71,37 +85,47 @@ export class CronService {
   }
 
   private initStaticJobs() {
-    // Sabah Brifingi (Haftaiçi 08:30)
+    // Sabah Brifingi (Haftaiçi 08:30) — sadece aktif siparis varsa
     cron.schedule(
       "30 8 * * 1-5",
       () => {
+        if (!this.hasActiveOrders()) {
+          console.log("📭 Aktif siparis yok, sabah brifingi atlanıyor.");
+          return;
+        }
         this.sendMorningBriefing();
       },
       { timezone: "Asia/Almaty" },
     );
 
-    // Akşam Brifingi (Haftaiçi 18:00)
+    // Akşam Brifingi (Haftaiçi 18:00) — sadece aktif siparis varsa
     cron.schedule(
       "0 18 * * 1-5",
       () => {
+        if (!this.hasActiveOrders()) {
+          console.log("📭 Aktif siparis yok, aksam brifingi atlanıyor.");
+          return;
+        }
         this.sendEveningBriefing();
       },
       { timezone: "Asia/Almaty" },
     );
 
-    // Barış Bey: Malzeme Takibi Hatırlatması (Her gün 10:00)
+    // Malzeme Takibi (Her gün 10:00) — sadece aktif siparis varsa
     cron.schedule(
       "0 10 * * *",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.checkPendingMaterials();
       },
       { timezone: "Asia/Almaty" },
     );
 
-    // --- PERSONEL KONTROL MESAJLARI ---
+    // --- PERSONEL KONTROL MESAJLARI --- sadece aktif siparis varsa
     cron.schedule(
       "0 9 * * 1-5",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.sendStaffControlMessage("morning");
       },
       { timezone: "Asia/Almaty" },
@@ -109,6 +133,7 @@ export class CronService {
     cron.schedule(
       "30 13 * * 1-5",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.sendStaffControlMessage("noon");
       },
       { timezone: "Asia/Almaty" },
@@ -116,43 +141,47 @@ export class CronService {
     cron.schedule(
       "30 17 * * 1-5",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.sendStaffControlMessage("evening");
       },
       { timezone: "Asia/Almaty" },
     );
 
-    // KUMAŞ & DIŞ ALIM TAKİP: Marina'ya hatırlatma (Pazar hariç 09:00)
+    // KUMAŞ & DIŞ ALIM TAKİP (Pazar hariç 09:00) — sadece aktif siparis varsa
     cron.schedule(
       "0 9 * * 1-6",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.checkFabricAndPurchaseStatus();
       },
       { timezone: "Asia/Almaty" },
     );
 
-    // TESLİM TARİHİ: 5 gün kala satıcıya bildirim (Her gün 10:00)
+    // TESLİM TARİHİ (Her gün 10:00) — sadece aktif siparis varsa
     cron.schedule(
       "0 10 * * *",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.checkDeliveryApproaching();
       },
       { timezone: "Asia/Almaty" },
     );
 
-    // ÜRETİM TAKİP: Dağıtımdan 5 iş günü sonra personel durum sorgusu (Pazar hariç 10:30)
+    // ÜRETİM TAKİP (Pazar hariç 10:30) — sadece aktif siparis varsa
     cron.schedule(
       "30 10 * * 1-6",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.checkProductionStatus();
       },
       { timezone: "Asia/Almaty" },
     );
 
-    // --- PROAKTİF KONTROL (HEARTBEAT) ---
-    // Kazakistan saati ile sabah 06:00 - 20:00 arası her saat başı çalışır.
+    // HEARTBEAT (06:00-20:00 her saat başı) — sadece aktif siparis varsa
     cron.schedule(
       "0 6-20 * * *",
       () => {
+        if (!this.hasActiveOrders()) return;
         this.proactiveService.runHeartbeat();
       },
       { timezone: "Asia/Almaty" },
