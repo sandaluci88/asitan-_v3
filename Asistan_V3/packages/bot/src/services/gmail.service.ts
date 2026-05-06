@@ -81,6 +81,8 @@ export class GmailService {
       tls: {
         rejectUnauthorized: false,
       },
+      connectionTimeout: 15000,
+      socketTimeout: 30000,
     });
 
     // Prevent unhandled socket errors from crashing the process

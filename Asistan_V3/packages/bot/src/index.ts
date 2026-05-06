@@ -280,7 +280,7 @@ async function main() {
     try {
       const activeSupervisorId = marinaId || bossId;
       if (activeSupervisorId && activeSupervisorId !== 0) {
-        const cronService = CronService.getInstance(bot, activeSupervisorId);
+        const cronService = CronService.getInstance(bot, activeSupervisorId, staffService, orderService);
         cronService.init();
         logger.info("Cron Service baslatildi");
       }

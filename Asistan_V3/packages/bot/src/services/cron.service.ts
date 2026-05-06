@@ -307,7 +307,11 @@ export class CronService {
   }
 
   async sendStaffControlMessage(type: "morning" | "noon" | "evening") {
-    // ORDER GUARD: Aktif sipariş yoksa personel kontrol mesajı gönderme
+    // ORDER GUARD: OrderService tanımlı değilse veya aktif sipariş yoksa atla
+    if (!this.orderService?.getActiveTrackingItems) {
+      console.log("📭 OrderService tanımlı değil, personel kontrol mesajı atlanıyor.");
+      return;
+    }
     const activeItems = this.orderService.getActiveTrackingItems();
     if (activeItems.length === 0) {
       console.log("📭 Aktif sipariş yok, personel kontrol mesajı atlanıyor.");
@@ -357,6 +361,7 @@ export class CronService {
 
   async checkFabricAndPurchaseStatus() {
     try {
+      if (!this.orderService?.getPendingFabricReminders) return;
       const pendingItems = this.orderService.getPendingFabricReminders();
       if (pendingItems.length === 0) return;
 
@@ -437,6 +442,7 @@ export class CronService {
    */
   async checkProductionStatus() {
     try {
+      if (!this.orderService?.getItemsNeedingFollowUp) return;
       const itemsToCheck = this.orderService.getItemsNeedingFollowUp();
       if (itemsToCheck.length === 0) return;
 
@@ -525,6 +531,7 @@ export class CronService {
    */
   async checkDeliveryApproaching() {
     try {
+      if (!this.orderService?.getOrders) return;
       const orders = this.orderService.getOrders();
       // ORDER GUARD: Sipariş yoksa teslimat kontrolü atla
       if (!orders || orders.length === 0) return;

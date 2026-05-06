@@ -32,6 +32,10 @@ export class ProactiveService {
       const criticalErrors = healthResults.filter((r) => r.status === "ERROR");
 
       // 2. Operasyonel Kontrol (Görev Takibi)
+      if (!this.orderService?.getActiveTrackingItems) {
+        logger.warn("OrderService veya getActiveTrackingItems tanımlı değil, heartbeat atlanıyor.");
+        return;
+      }
       const activeItems = this.orderService.getActiveTrackingItems();
 
       // ORDER GUARD: Aktif sipariş yoksa ve kritik hata yoksa sessiz kal
