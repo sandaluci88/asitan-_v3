@@ -12,6 +12,7 @@ export class DistributionService {
   private pdfService: PDFService;
   private bossId: number;
   private marinaId: number;
+  private cronService: any; // OrderCronService entegrasyonu
 
   // Mükerrer mesaj kontrolü
   private recentMessages = new Map<string, number>();
@@ -30,6 +31,11 @@ export class DistributionService {
     this.pdfService = PDFService.getInstance();
     this.bossId = bossId;
     this.marinaId = marinaId;
+  }
+
+  /** CronService referansını ayarla (dağıtım sonrası sipariş job'ları için) */
+  setCronService(cronService: any): void {
+    this.cronService = cronService;
   }
 
   // --- Mükerrer mesaj kontrolü ---
@@ -232,6 +238,21 @@ export class DistributionService {
       this.bot.api
         .sendMessage(this.bossId, criticalMsg, { parse_mode: "HTML" })
         .catch(() => {});
+    }
+
+    // ─── SIPARIŞ BAZLI CRON: Dağıtım başarılı → job'ları oluştur ───
+    if (this.cronService && report.success.length > 0) {
+      this.cronService
+        .createOrderJobs(order)
+        .then(() => {
+          logger.info(
+            { orderId: order.id, orderNumber: order.orderNumber },
+            "Sipariş bazlı cron job'ları oluşturuldu",
+          );
+        })
+        .catch((err: any) => {
+          logger.warn({ err, orderId: order.id }, "Sipariş cron job oluşturma hatası");
+        });
     }
 
     return report;

@@ -6,6 +6,7 @@ import { ProductionService } from "./production.service.js";
 import { CalendarService } from "./calendar.service.js";
 import { KenanService } from "./kenan.service.js";
 import { ProactiveService } from "./proactive.service.js";
+import { OrderCronService } from "./order-cron.service.js";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -27,6 +28,7 @@ export class CronService {
   private orderService: any;
   private kenanService: KenanService;
   private proactiveService: ProactiveService;
+  private orderCronService: OrderCronService;
   private bot: Bot;
   private targetChatId: string | number;
 
@@ -56,6 +58,7 @@ export class CronService {
     this.calendarService = new CalendarService();
     this.kenanService = new KenanService();
     this.proactiveService = new ProactiveService(bot, Number(chatId), orderService, staffService);
+    this.orderCronService = new OrderCronService(bot, chatId, staffService, orderService);
 
     // Klasör yoksa oluştur
     const dir = path.dirname(this.tasksFile);
@@ -82,6 +85,11 @@ export class CronService {
 
     // Dinamik görevleri yükle ve başlat
     this.loadAndScheduleDynamicTasks();
+
+    // Sipariş bazlı cron job'larını restore et
+    this.orderCronService.restoreActiveJobs().catch((err) => {
+      logger.warn({ err }, "CronService: Failed to restore order jobs");
+    });
   }
 
   private initStaticJobs() {
@@ -112,6 +120,7 @@ export class CronService {
     );
 
     // Malzeme Takibi (Her gün 10:00) — sadece aktif siparis varsa
+    // NOT: Kumaş/üretim/teslimat takibi artık sipariş bazlı (OrderCronService)
     cron.schedule(
       "0 10 * * *",
       () => {
@@ -147,35 +156,9 @@ export class CronService {
       { timezone: "Asia/Almaty" },
     );
 
-    // KUMAŞ & DIŞ ALIM TAKİP (Pazar hariç 09:00) — sadece aktif siparis varsa
-    cron.schedule(
-      "0 9 * * 1-6",
-      () => {
-        if (!this.hasActiveOrders()) return;
-        this.checkFabricAndPurchaseStatus();
-      },
-      { timezone: "Asia/Almaty" },
-    );
-
-    // TESLİM TARİHİ (Her gün 10:00) — sadece aktif siparis varsa
-    cron.schedule(
-      "0 10 * * *",
-      () => {
-        if (!this.hasActiveOrders()) return;
-        this.checkDeliveryApproaching();
-      },
-      { timezone: "Asia/Almaty" },
-    );
-
-    // ÜRETİM TAKİP (Pazar hariç 10:30) — sadece aktif siparis varsa
-    cron.schedule(
-      "30 10 * * 1-6",
-      () => {
-        if (!this.hasActiveOrders()) return;
-        this.checkProductionStatus();
-      },
-      { timezone: "Asia/Almaty" },
-    );
+    // KUMAŞ & DIŞ ALIM TAKİP → artık sipariş bazlı (OrderCronService)
+    // TESLİM TARİHİ KONTROLÜ → artık sipariş bazlı (OrderCronService)
+    // ÜRETİM TAKİP → artık sipariş bazlı (OrderCronService)
 
     // HEARTBEAT (06:00-20:00 her saat başı) — sadece aktif siparis varsa
     cron.schedule(
@@ -189,6 +172,25 @@ export class CronService {
   }
 
   // --- DINAMIK GÖREV YÖNETIMİ ---
+
+  // --- SIPARIŞ BAZLI CRON (OrderCronService wrapper) ---
+
+  /** Sipariş oluşturulduğunda çağrılır → 4 job otomatik oluşur */
+  async createOrderJobs(order: any): Promise<void> {
+    return this.orderCronService.createOrderJobs(order);
+  }
+
+  /** Sipariş tamamlandığında/archivlendiğinde çağrılır → job'lar silinir */
+  async removeOrderJobs(orderId: string): Promise<number> {
+    return this.orderCronService.removeOrderJobs(orderId);
+  }
+
+  /** Aktif sipariş job'larını listele */
+  async getActiveOrderJobs(orderId?: string) {
+    return this.orderCronService.getActiveJobs(orderId);
+  }
+
+  // --- DINAMIK GÖREV YÖNETIMİ (kullanıcı hatırlatıcıları) ---
 
   private getStoredTasks(): DynamicTask[] {
     if (!fs.existsSync(this.tasksFile)) {

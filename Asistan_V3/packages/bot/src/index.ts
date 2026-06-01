@@ -282,7 +282,9 @@ async function main() {
       if (activeSupervisorId && activeSupervisorId !== 0) {
         const cronService = CronService.getInstance(bot, activeSupervisorId, staffService, orderService);
         cronService.init();
-        logger.info("Cron Service baslatildi");
+        // DistributionService'e cron referansını ver (sipariş bazlı job oluşturma için)
+        distributionService.setCronService(cronService);
+        logger.info("Cron Service baslatildi (order-aware mode)");
       }
     } catch (cronErr) {
       logger.error({ err: cronErr }, "Cron Service hatasi");
