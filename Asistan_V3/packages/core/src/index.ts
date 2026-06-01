@@ -17,6 +17,10 @@ export type { Staff as StaffType } from "./services/staff.service.js";
 export { ImageEmbeddingService } from "./services/image-embedding.service.js";
 export { parseOrderExcel } from "./services/excel-order-parser.js";
 export type { ParsedOrderResult } from "./services/excel-order-parser.js";
+export { ConversationMemoryService } from "./services/conversation-memory.service.js";
+export type { ConversationMessage } from "./services/conversation-memory.service.js";
+export { ContextCompressor } from "./services/context-compressor.js";
+export type { CompressibleMessage, CompressionResult } from "./services/context-compressor.js";
 
 // Repositories
 export { OrderRepository } from "./repositories/order.repository.js";
