@@ -241,6 +241,129 @@ export class OrderCronService {
   }
 
   // ────────────────────────────────────────────────────────
+  // Reconciliation — Eksik job'ları tespit et ve oluştur
+  // ────────────────────────────────────────────────────────
+
+  /**
+   * Aktif siparişlerin hepsinin cron job'ı var mı kontrol et.
+   * Job'suz siparişler için otomatik job oluştur.
+   * Heartbeat'te veya `/cron` komutunda çağrılır.
+   */
+  async reconcile(): Promise<{ checked: number; created: number; issues: string[] }> {
+    const result = { checked: 0, created: 0, issues: [] as string[] };
+
+    try {
+      if (!this.orderService?.getOrders) return result;
+
+      const orders = this.orderService.getOrders();
+      const activeOrders = orders.filter(
+        (o: any) => o.status !== "archived" && o.status !== "completed",
+      );
+
+      result.checked = activeOrders.length;
+
+      for (const order of activeOrders) {
+        const orderId = String(order.id);
+
+        // Bu siparişin aktif job'ı var mı?
+        const existingJobs = await this.getActiveJobs(orderId);
+
+        if (existingJobs.length === 0) {
+          // Job yok → oluştur
+          result.issues.push(`📦 ${order.orderNumber || orderId} (${order.customerName}) — jobsuz!`);
+          await this.createOrderJobs(order);
+          result.created++;
+        }
+      }
+    } catch (err) {
+      logger.warn({ err }, "OrderCron: Reconciliation failed");
+    }
+
+    if (result.created > 0) {
+      logger.info(
+        { checked: result.checked, created: result.created },
+        "OrderCron: Reconciliation completed — missing jobs created",
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Cron durum raporu — `/cron` komutu için
+   */
+  async getStatusReport(): Promise<string> {
+    const lines: string[] = ["⏰ <b>SİPARİŞ CRON DURUMU</b>\n"];
+
+    try {
+      if (!this.orderService?.getOrders) {
+        return "❌ OrderService erişilemez";
+      }
+
+      const orders = this.orderService.getOrders();
+      const activeOrders = orders.filter(
+        (o: any) => o.status !== "archived" && o.status !== "completed",
+      );
+
+      if (activeOrders.length === 0) {
+        return "📭 Aktif sipariş yok — cron job bulunmuyor.";
+      }
+
+      const jobIcons: Record<string, string> = {
+        delivery_warning: "📦",
+        fabric_check: "🧶",
+        production_followup: "🔍",
+        status_check: "📊",
+      };
+
+      for (const order of activeOrders.slice(0, 10)) {
+        const orderId = String(order.id);
+        const jobs = await this.getActiveJobs(orderId);
+
+        const orderLine = `\n<b>${order.orderNumber || "?"}</b> — ${order.customerName}`;
+        lines.push(orderLine);
+
+        if (jobs.length === 0) {
+          lines.push("  ⚠️ <i>CRON JOB YOK — oluşturulacak!</i>");
+        } else {
+          for (const job of jobs) {
+            const icon = jobIcons[job.jobType] || "⚙️";
+            const lastRun = job.lastRun
+              ? new Date(job.lastRun).toLocaleString("tr-TR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "henüz çalışmadı";
+            lines.push(`  ${icon} ${job.jobType} — ${lastRun}`);
+          }
+        }
+      }
+
+      // Genel istatistik
+      const allJobs = await this.getActiveJobs();
+      lines.push(`\n━━━━━━━━━━━━━━━━━━━━`);
+      lines.push(`📋 Toplam: ${activeOrders.length} sipariş, ${allJobs.length} aktif job`);
+
+      // Reconciliation çalıştır
+      const recon = await this.reconcile();
+      if (recon.created > 0) {
+        lines.push(`\n🔧 <b>OTOMATİK DÜZELTME:</b> ${recon.created} eksik job oluşturuldu`);
+        for (const issue of recon.issues) {
+          lines.push(`  → ${issue}`);
+        }
+      } else {
+        lines.push(`\n✅ Tüm siparişlerin cron job'ları mevcut`);
+      }
+    } catch (err) {
+      lines.push(`\n❌ Hata: ${(err as Error).message}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  // ────────────────────────────────────────────────────────
   // Aktif Job'ları Listele
   // ────────────────────────────────────────────────────────
 

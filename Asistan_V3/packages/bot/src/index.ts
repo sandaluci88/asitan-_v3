@@ -212,6 +212,24 @@ bot.command("kaizen", async (ctx) => {
   );
 });
 
+bot.command("cron", async (ctx) => {
+  if ((ctx as any).role !== "boss") return;
+  const statusMsg = await ctx.reply("⏰ Cron durumu kontrol ediliyor...");
+  try {
+    const cronService = CronService.getInstance();
+    const report = await cronService.getCronStatusReport();
+    await bot.api.editMessageText(ctx.chat.id, statusMsg.message_id, report, {
+      parse_mode: "HTML",
+    });
+  } catch (err) {
+    await bot.api.editMessageText(
+      ctx.chat.id,
+      statusMsg.message_id,
+      "❌ Cron servisi henüz başlatılmamış.",
+    );
+  }
+});
+
 // ─── Message Handler ───────────────────────────────────────────
 bot.on(
   ["message:text", "message:voice", "message:document", "message:contact"],

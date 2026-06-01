@@ -166,6 +166,10 @@ export class CronService {
       () => {
         if (!this.hasActiveOrders()) return;
         this.proactiveService.runHeartbeat();
+        // Her heartbeat'te reconciliation: eksik job'ları otomatik oluştur
+        this.orderCronService.reconcile().catch((err: any) => {
+          logger.warn({ err }, "Heartbeat reconciliation failed");
+        });
       },
       { timezone: "Asia/Almaty" },
     );
@@ -188,6 +192,16 @@ export class CronService {
   /** Aktif sipariş job'larını listele */
   async getActiveOrderJobs(orderId?: string) {
     return this.orderCronService.getActiveJobs(orderId);
+  }
+
+  /** Eksik job'ları tespit et ve oluştur (reconciliation) */
+  async reconcileOrderJobs() {
+    return this.orderCronService.reconcile();
+  }
+
+  /** Cron durum raporu — /cron komutu için */
+  async getCronStatusReport(): Promise<string> {
+    return this.orderCronService.getStatusReport();
   }
 
   // --- DINAMIK GÖREV YÖNETIMİ (kullanıcı hatırlatıcıları) ---
